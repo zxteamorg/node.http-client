@@ -3,6 +3,7 @@ import * as http from "http";
 import * as querystring from "querystring";
 import { URL } from "url";
 import { Limit, LimitToken } from "limit.js";
+import loggerFactory, { Logger } from "@zxteam/logger";
 
 import { WebClient, WebClientLike } from "./WebClient";
 import { WebApiClientOpts } from "./WebApiClientOpts";
@@ -12,6 +13,7 @@ export class WebApiClient {
 	private readonly _baseUrl: URL;
 	private readonly _webClient: WebClientLike;
 	private readonly _limit: Limit | null;
+	private _log: Logger | null;
 
 	public constructor(opts: WebApiClientOpts) {
 		this._baseUrl = new URL(opts.url);
@@ -23,11 +25,28 @@ export class WebApiClient {
 			this._webClient = new WebClient({ proxyOpts: opts.proxy });
 		}
 		this._limit = opts.limit || null;
+		this._log = null;
 	}
 
 	public static setWebClientFactory(value: () => WebClientLike) { WebApiClient._webClientFactory = value; }
 	public static removeWebClientFactory() { delete WebApiClient._webClientFactory; }
 
+	public get log() {
+		if (this._log !== null) {
+			return this._log;
+		}
+		this._log = loggerFactory.getLogger(this.constructor.name);
+		if (this._webClient instanceof WebClient) {
+			this._webClient.log = this._log;
+		}
+		return this._log;
+	}
+	public set log(value: Logger) {
+		if (this._webClient instanceof WebClient) {
+			this._webClient.log = value;
+		}
+		this._log = value;
+	}
 	protected get baseUrl(): URL { return this._baseUrl; }
 
 	protected async limitThreshold(timeout: number): Promise<DisposableLike> {
