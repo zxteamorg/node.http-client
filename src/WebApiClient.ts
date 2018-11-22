@@ -13,6 +13,7 @@ export class WebApiClient {
 	private readonly _baseUrl: URL;
 	private readonly _webClient: WebClientLike;
 	private readonly _limit: Limit | null;
+	private _limitTimeout: number;
 	private _log: Logger | null;
 
 	public constructor(opts: WebApiClientOpts) {
@@ -25,6 +26,7 @@ export class WebApiClient {
 			this._webClient = new WebClient({ proxyOpts: opts.proxy });
 		}
 		this._limit = opts.limit || null;
+		this._limitTimeout = 15000;
 		this._log = null;
 	}
 
@@ -47,24 +49,17 @@ export class WebApiClient {
 		}
 		this._log = value;
 	}
-	protected get baseUrl(): URL { return this._baseUrl; }
 
-	protected async limitThreshold(timeout: number): Promise<DisposableLike> {
-		let limitToken: LimitToken | null = null;
-		if (this._limit !== null) {
-			limitToken = await this._limit.accrueTokenLazy(timeout);
-		}
-		const disposeStub = {
-			dispose: async () => {
-				if (limitToken !== null) {
-					limitToken.commit();
-				}
-			}
-		};
-		return disposeStub;
+	public get limitTimeout(): number {
+		return this._limitTimeout;
+	}
+	public set limitTimeout(value: number) {
+		this._limitTimeout = value;
 	}
 
-	protected callWebMethodGet(webMethodName: string,
+	protected get baseUrl(): URL { return this._baseUrl; }
+
+	protected invokeWebMethodGet(webMethodName: string,
 		queryArgs?: { [key: string]: string }, headers?: http.OutgoingHttpHeaders
 	): Promise<any> {
 		let path = webMethodName;
@@ -74,7 +69,7 @@ export class WebApiClient {
 
 		return this.invokeGet(path, headers);
 	}
-	protected callWebMethodPost(webMethodName: string,
+	protected invokeWebMethodPost(webMethodName: string,
 		postArgs: { [key: string]: string }, headers?: http.OutgoingHttpHeaders
 	): Promise<any> {
 		const bodyStr = querystring.stringify(postArgs);
@@ -89,14 +84,34 @@ export class WebApiClient {
 	}
 
 	protected async invokeGet(path: string, headers?: http.OutgoingHttpHeaders): Promise<any> {
-		const url: URL = new URL(path, this._baseUrl);
-		const result = await this._webClient.invoke({ url, method: "GET", headers });
-		return JSON.parse(result.toString());
+		let limitToken: LimitToken | null = null;
+		if (this._limit !== null) {
+			limitToken = await this._limit.accrueTokenLazy(this._limitTimeout);
+		}
+		try {
+			const url: URL = new URL(path, this._baseUrl);
+			const result = await this._webClient.invoke({ url, method: "GET", headers });
+			return JSON.parse(result.toString());
+		} finally {
+			if (limitToken !== null) {
+				limitToken.commit();
+			}
+		}
 	}
 	protected async invokePost(path: string, body: Buffer, headers?: http.OutgoingHttpHeaders): Promise<any> {
-		const url: URL = new URL(path, this._baseUrl);
-		const result = await this._webClient.invoke({ url, method: "POST", body, headers });
-		return JSON.parse(result.toString());
+		let limitToken: LimitToken | null = null;
+		if (this._limit !== null) {
+			limitToken = await this._limit.accrueTokenLazy(this._limitTimeout);
+		}
+		try {
+			const url: URL = new URL(path, this._baseUrl);
+			const result = await this._webClient.invoke({ url, method: "POST", body, headers });
+			return JSON.parse(result.toString());
+		} finally {
+			if (limitToken !== null) {
+				limitToken.commit();
+			}
+		}
 	}
 }
 
