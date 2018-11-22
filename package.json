@@ -1,0 +1,44 @@
+{
+	"name": "@zxteam/webclient",
+	"version": "0.0.0-pre000",
+	"description": "TBD",
+	"author": {
+		"name": "Maxim Anurin",
+		"email": "maxim.anurin@zxteam.org",
+		"url": "http://www.anurin.name"
+	},
+	"contributors": [
+		{
+			"name": "Serg Zgama",
+			"email": "serg.zgama@zxteam.org"
+		}
+	],
+	"license": "MIT",
+	"devDependencies": {
+		"@types/lodash": "^4.14.118",
+		"@types/mocha": "^5.2.5",
+		"@types/node": "^10.12.9",
+		"@zxnode/build": "0.0.27",
+		"mocha": "^5.2.0",
+		"nyc": "^13.1.0"
+	},
+	"dependencies": {
+		"@zxteam/contract": "0.0.0-pre002",
+		"@zxteam/logger": "0.0.1",
+		"limit.js": "0.0.1"
+	},
+	"keywords": [],
+	"repository": {
+		"type": "git",
+		"url": "ssh://git@dev.zxteam.net:22282/pub/node/webclient.git"
+	},
+	"bugs": {
+		"url": "https://dev.zxteam.net/pub/node/webclient/issues"
+	},
+	"homepage": "https://dev.zxteam.net/pub/node/webclient",
+	"scripts": {
+		"build": "zxbuild clean dist",
+		"test": "zxbuild compile:test && nyc --exclude submodules --exclude test --reporter=lcov --reporter=text --reporter=text-summary mocha 'test/**/*.test.js' --recursive"
+	},
+	"private": true
+}
