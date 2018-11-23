@@ -13,7 +13,7 @@ export class WebApiClient {
 	private readonly _baseUrl: URL;
 	private readonly _webClient: WebClientLike;
 	private readonly _limit: Limit | null;
-	private _limitTimeout: number;
+	private _invokeTimeout: number;
 	private _log: Logger | null;
 
 	public constructor(opts: WebApiClientOpts) {
@@ -26,7 +26,7 @@ export class WebApiClient {
 			this._webClient = new WebClient({ proxyOpts: opts.proxy });
 		}
 		this._limit = opts.limit || null;
-		this._limitTimeout = 15000;
+		this._invokeTimeout = 15000;
 		this._log = null;
 	}
 
@@ -50,11 +50,14 @@ export class WebApiClient {
 		this._log = value;
 	}
 
-	public get limitTimeout(): number {
-		return this._limitTimeout;
+	public get invokeTimeout(): number {
+		return this._invokeTimeout;
 	}
-	public set limitTimeout(value: number) {
-		this._limitTimeout = value;
+	public set invokeTimeout(value: number) {
+		if (this._webClient instanceof WebClient) {
+			this._webClient.invokeTimeout = value;
+		}
+		this._invokeTimeout = value;
 	}
 
 	protected get baseUrl(): URL { return this._baseUrl; }
@@ -86,7 +89,7 @@ export class WebApiClient {
 	protected async invokeGet(path: string, headers?: http.OutgoingHttpHeaders): Promise<any> {
 		let limitToken: LimitToken | null = null;
 		if (this._limit !== null) {
-			limitToken = await this._limit.accrueTokenLazy(this._limitTimeout);
+			limitToken = await this._limit.accrueTokenLazy(this._invokeTimeout);
 		}
 		try {
 			const url: URL = new URL(path, this._baseUrl);
@@ -101,7 +104,7 @@ export class WebApiClient {
 	protected async invokePost(path: string, body: Buffer, headers?: http.OutgoingHttpHeaders): Promise<any> {
 		let limitToken: LimitToken | null = null;
 		if (this._limit !== null) {
-			limitToken = await this._limit.accrueTokenLazy(this._limitTimeout);
+			limitToken = await this._limit.accrueTokenLazy(this._invokeTimeout);
 		}
 		try {
 			const url: URL = new URL(path, this._baseUrl);
