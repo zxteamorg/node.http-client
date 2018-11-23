@@ -97,6 +97,9 @@ export class WebClient implements WebClientLike {
 						this.log.debug("http.request failed", error);
 						reject(error);
 					});
+				if (this._invokeTimeout !== null) {
+					request.setTimeout(this._invokeTimeout, () => { reject(new Error("Timeout")); });
+				}
 				if (body) {
 					if (this.log.isTraceEnabled()) { this.log.trace("write body", body.toString()); }
 					request.write(body);
@@ -131,6 +134,9 @@ export class WebClient implements WebClientLike {
 							this.log.debug("https.request failed", error);
 							reject(error);
 						});
+					if (this._invokeTimeout !== null) {
+						request.setTimeout(this._invokeTimeout, () => { reject(new Error("Timeout")); });
+					}
 					if (body) {
 						if (this.log.isTraceEnabled()) { this.log.trace("write body", body.toString()); }
 						request.write(body);
@@ -143,6 +149,9 @@ export class WebClient implements WebClientLike {
 							this.log.debug("http.request failed", error);
 							reject(error);
 						});
+					if (this._invokeTimeout !== null) {
+						request.setTimeout(this._invokeTimeout, () => { reject(new Error("Timeout")); });
+					}
 					if (body) {
 						if (this.log.isTraceEnabled()) { this.log.trace("write body", body.toString()); }
 						request.write(body);
