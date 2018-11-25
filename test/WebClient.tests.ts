@@ -6,12 +6,12 @@ import { WebClient, ProxyOpts } from "../src";
 describe("WebClient tests", function () {
 	describe("Tests without proxy", function () {
 		it("WebClient should GET http:", async function () {
-			const httpClient = new WebClient({});
+			const httpClient = new WebClient();
 			await httpClient.invoke({ url: new URL("?a", "http://www.google.com"), method: "GET", headers: { test: "test" } });
 		});
 
 		it("WebClient should GET https:", async function () {
-			const httpClient = new WebClient({});
+			const httpClient = new WebClient();
 			await httpClient.invoke({ url: new URL("?a", "http://www.google.com"), method: "GET", headers: { test: "test" } });
 		});
 	});

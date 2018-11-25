@@ -1,33 +1,45 @@
-import { DisposableLike } from "@zxteam/contract";
 import * as http from "http";
 import * as querystring from "querystring";
 import { URL } from "url";
-import { Limit, LimitToken } from "limit.js";
-import loggerFactory, { Logger } from "@zxteam/logger";
+import LimitFactory, { Limit, LimitToken } from "limit.js";
+import { DisposableLike } from "@zxteam/contract";
+import { loggerFactory, Logger } from "@zxteam/logger";
 
 import { WebClient, WebClientLike } from "./WebClient";
-import { WebApiClientOpts } from "./WebApiClientOpts";
 
-export class WebApiClient {
-	private static _webClientFactory?: () => WebClientLike;
+export namespace WebApiClient {
+	export interface Opts {
+		url: string;
+		limit?: {
+			opts: Limit.Opts;
+			timeout: number;
+		};
+		webClient?: WebClient.Opts | WebClientLike;
+	}
+}
+export class WebApiClient implements DisposableLike {
+	private static _webClientFactory?: (opts?: WebClient.Opts) => WebClientLike;
 	private readonly _baseUrl: URL;
 	private readonly _webClient: WebClientLike;
-	private readonly _limit: Limit | null;
-	private _invokeTimeout: number;
+	private readonly _limit?: { instance: Limit, timeout: number };
 	private _log: Logger | null;
 
-	public constructor(opts: WebApiClientOpts) {
+	public constructor(opts: WebApiClient.Opts) {
 		this._baseUrl = new URL(opts.url);
-		if (opts.webClient) {
+		if (opts.limit) {
+			this._limit = {
+				instance: LimitFactory(opts.limit.opts),
+				timeout: opts.limit.timeout
+			};
+		}
+		this._log = null;
+		if (opts.webClient && "invoke" in opts.webClient) {
 			this._webClient = opts.webClient;
 		} else if (WebApiClient._webClientFactory) {
-			this._webClient = WebApiClient._webClientFactory();
+			this._webClient = WebApiClient._webClientFactory(opts.webClient);
 		} else {
-			this._webClient = new WebClient({ proxyOpts: opts.proxy });
+			this._webClient = new WebClient(opts.webClient);
 		}
-		this._limit = opts.limit || null;
-		this._invokeTimeout = 15000;
-		this._log = null;
 	}
 
 	public static setWebClientFactory(value: () => WebClientLike) { WebApiClient._webClientFactory = value; }
@@ -50,14 +62,11 @@ export class WebApiClient {
 		this._log = value;
 	}
 
-	public get invokeTimeout(): number {
-		return this._invokeTimeout;
-	}
-	public set invokeTimeout(value: number) {
-		if (this._webClient instanceof WebClient) {
-			this._webClient.invokeTimeout = value;
+	public dispose(): Promise<void> {
+		if (this._limit) {
+			return this._limit.instance.dispose();
 		}
-		this._invokeTimeout = value;
+		return Promise.resolve();
 	}
 
 	protected get baseUrl(): URL { return this._baseUrl; }
@@ -85,11 +94,10 @@ export class WebApiClient {
 
 		return this.invokePost(webMethodName, body, Object.assign(postHeaders, headers));
 	}
-
 	protected async invokeGet(path: string, headers?: http.OutgoingHttpHeaders): Promise<any> {
 		let limitToken: LimitToken | null = null;
-		if (this._limit !== null) {
-			limitToken = await this._limit.accrueTokenLazy(this._invokeTimeout);
+		if (this._limit !== undefined) {
+			limitToken = await this._limit.instance.accrueTokenLazy(this._limit.timeout || 500);
 		}
 		try {
 			const url: URL = new URL(path, this._baseUrl);
@@ -103,8 +111,8 @@ export class WebApiClient {
 	}
 	protected async invokePost(path: string, body: Buffer, headers?: http.OutgoingHttpHeaders): Promise<any> {
 		let limitToken: LimitToken | null = null;
-		if (this._limit !== null) {
-			limitToken = await this._limit.accrueTokenLazy(this._invokeTimeout);
+		if (this._limit !== undefined) {
+			limitToken = await this._limit.instance.accrueTokenLazy(this._limit.timeout || 500);
 		}
 		try {
 			const url: URL = new URL(path, this._baseUrl);

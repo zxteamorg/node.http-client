@@ -1,6 +1,6 @@
 {
 	"name": "@zxteam/webclient",
-	"version": "0.0.0-pre004",
+	"version": "0.0.0-pre005",
 	"description": "TBD",
 	"author": {
 		"name": "Maxim Anurin",
@@ -18,14 +18,14 @@
 		"@types/lodash": "^4.14.118",
 		"@types/mocha": "^5.2.5",
 		"@types/node": "^10.12.9",
-		"@zxnode/build": "0.0.27",
+		"@zxnode/build": "0.0.28",
 		"mocha": "^5.2.0",
 		"nyc": "^13.1.0"
 	},
 	"dependencies": {
 		"@zxteam/contract": "0.0.0-pre002",
 		"@zxteam/logger": "0.0.1",
-		"limit.js": "0.0.1"
+		"limit.js": "0.0.1-pre001"
 	},
 	"keywords": [],
 	"repository": {

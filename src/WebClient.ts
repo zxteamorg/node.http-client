@@ -47,17 +47,15 @@ export class WebClient implements WebClientLike {
 	private readonly _proxyOpts: ProxyOpts | null;
 	private readonly _sslOpts: SslOpts | null;
 	private _log: Logger;
-	private _invokeTimeout: number | null;
+	private _timeout: number | null;
 	public constructor(opts?: WebClient.Opts) {
 		this._proxyOpts = opts && opts.proxyOpts || null;
 		this._sslOpts = opts && opts.sslOpts || null;
-		this._invokeTimeout = opts && opts.invokeTimeout || null;
+		this._timeout = opts && opts.timeout || null;
 	}
 
 	public get log() { return this._log || (this._log = loggerFactory.getLogger(this.constructor.name)); }
 	public set log(value: Logger) { this._log = value; }
-
-	public set invokeTimeout(value: number) { this._invokeTimeout = value; }
 
 	public invoke({ url, method, headers, body }: WebClientInvokeData): Promise<Buffer> {
 		if (this.log.isTraceEnabled()) { this.log.trace("begin invoke(...)", url, method, headers, body); }
@@ -97,8 +95,8 @@ export class WebClient implements WebClientLike {
 						this.log.debug("http.request failed", error);
 						reject(error);
 					});
-				if (this._invokeTimeout !== null) {
-					request.setTimeout(this._invokeTimeout, () => { reject(new Error("Timeout")); });
+				if (this._timeout !== null) {
+					request.setTimeout(this._timeout, () => { reject(new Error("Timeout")); });
 				}
 				if (body) {
 					if (this.log.isTraceEnabled()) { this.log.trace("write body", body.toString()); }
@@ -134,8 +132,8 @@ export class WebClient implements WebClientLike {
 							this.log.debug("https.request failed", error);
 							reject(error);
 						});
-					if (this._invokeTimeout !== null) {
-						request.setTimeout(this._invokeTimeout, () => { reject(new Error("Timeout")); });
+					if (this._timeout !== null) {
+						request.setTimeout(this._timeout, () => { reject(new Error("Timeout")); });
 					}
 					if (body) {
 						if (this.log.isTraceEnabled()) { this.log.trace("write body", body.toString()); }
@@ -149,8 +147,8 @@ export class WebClient implements WebClientLike {
 							this.log.debug("http.request failed", error);
 							reject(error);
 						});
-					if (this._invokeTimeout !== null) {
-						request.setTimeout(this._invokeTimeout, () => { reject(new Error("Timeout")); });
+					if (this._timeout !== null) {
+						request.setTimeout(this._timeout, () => { reject(new Error("Timeout")); });
 					}
 					if (body) {
 						if (this.log.isTraceEnabled()) { this.log.trace("write body", body.toString()); }
@@ -164,7 +162,7 @@ export class WebClient implements WebClientLike {
 }
 export namespace WebClient {
 	export interface Opts {
-		invokeTimeout?: number;
+		timeout?: number;
 		proxyOpts?: ProxyOpts;
 		sslOpts?: SslOpts;
 	}
