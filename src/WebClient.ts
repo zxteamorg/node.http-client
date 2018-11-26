@@ -24,13 +24,16 @@ export interface HttpProxyOpts {
 export interface Socks5ProxyOpts {
 	type: "socks5";
 }
-export type SslOpts = SslCertOpts | SslPfxOpts;
-export interface SslCertOpts {
+export type SslOpts = SslOptsBase | SslCertOpts | SslPfxOpts;
+export interface SslOptsBase {
+	rejectUnauthorized?: boolean;
+}
+export interface SslCertOpts extends SslOptsBase {
 	key: Buffer;
 	cert: Buffer;
 	ca?: Buffer;
 }
-export interface SslPfxOpts {
+export interface SslPfxOpts extends SslOptsBase {
 	pfx: Buffer;
 	passphrase: string;
 }
@@ -115,10 +118,13 @@ export class WebClient implements WebClientLike {
 				if (reqOpts.protocol === "https:") {
 					const sslOpts = this._sslOpts;
 					if (sslOpts) {
+						if (sslOpts.rejectUnauthorized !== undefined) {
+							reqOpts.rejectUnauthorized = sslOpts.rejectUnauthorized;
+						}
 						if ("pfx" in sslOpts) {
 							reqOpts.pfx = sslOpts.pfx;
 							reqOpts.passphrase = sslOpts.passphrase;
-						} else {
+						} else if ("cert" in sslOpts) {
 							reqOpts.key = sslOpts.key;
 							reqOpts.cert = sslOpts.cert;
 							if (sslOpts.ca) {
