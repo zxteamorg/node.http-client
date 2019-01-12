@@ -38,6 +38,8 @@ pages:
   stage: publish
   dependencies:
     - build
+  variables:
+    GIT_STRATEGY: none
   script:
     - mkdir -p "public/$CI_COMMIT_REF_SLUG"
     - echo "CI_PROJECT_NAMESPACE = $CI_PROJECT_NAMESPACE" >> "public/$CI_COMMIT_REF_SLUG/build.log"
@@ -57,6 +59,8 @@ publish to npmjs.artifacts.zxteam.net:
   stage: publish
   dependencies:
     - build
+  variables:
+    GIT_STRATEGY: none
   before_script:
     - *utils
     - verify_package_version

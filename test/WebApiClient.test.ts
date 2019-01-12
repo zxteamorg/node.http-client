@@ -12,7 +12,7 @@ describe("WebApiClient tests", function () {
 			}
 		}
 
-		it.only("WebApiClient should GET http:", async function () {
+		it("WebApiClient should GET http:", async function () {
 			const apiClient = new MyApiClient({
 				url: "http://www.google.com",
 				limit: {
