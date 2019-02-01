@@ -1,9 +1,10 @@
 import * as http from "http";
 import * as querystring from "querystring";
 import { URL } from "url";
-import LimitFactory, { Limit, LimitToken } from "limit.js";
-import { DisposableLike } from "@zxteam/contract";
-import { loggerFactory, Logger } from "@zxteam/logger";
+import { Limit, LimitToken, limitFactory } from "limit.js";
+import { LoggerLike, CancellationTokenLike } from "@zxteam/contract";
+import { Disposable } from "@zxteam/disposable";
+import { loggerFactory } from "@zxteam/logger";
 
 import { WebClient, WebClientLike } from "./WebClient";
 
@@ -17,18 +18,19 @@ export namespace WebApiClient {
 		webClient?: WebClient.Opts | WebClientLike;
 	}
 }
-export class WebApiClient implements DisposableLike {
+export class WebApiClient extends Disposable {
 	private static _webClientFactory?: (opts?: WebClient.Opts) => WebClientLike;
 	private readonly _baseUrl: URL;
 	private readonly _webClient: WebClientLike;
 	private readonly _limit?: { instance: Limit, timeout: number };
-	private _log: Logger | null;
+	private _log: LoggerLike | null;
 
 	public constructor(opts: WebApiClient.Opts) {
+		super();
 		this._baseUrl = new URL(opts.url);
 		if (opts.limit) {
 			this._limit = {
-				instance: LimitFactory(opts.limit.opts),
+				instance: limitFactory(opts.limit.opts),
 				timeout: opts.limit.timeout
 			};
 		}
@@ -55,53 +57,90 @@ export class WebApiClient implements DisposableLike {
 		}
 		return this._log;
 	}
-	public set log(value: Logger) {
+	public set log(value: LoggerLike) {
 		if (this._webClient instanceof WebClient) {
 			this._webClient.log = value;
 		}
 		this._log = value;
 	}
 
-	public dispose(): Promise<void> {
-		if (this._limit) {
-			return this._limit.instance.dispose();
-		}
-		return Promise.resolve();
-	}
-
 	protected get baseUrl(): URL { return this._baseUrl; }
 
-	protected invokeWebMethodGet(webMethodName: string,
-		queryArgs?: { [key: string]: string }, headers?: http.OutgoingHttpHeaders
+	protected invokeWebMethodGet(
+		webMethodName: string,
+		opts?: {
+			queryArgs?: { [key: string]: string },
+			headers?: http.OutgoingHttpHeaders,
+			cancellationToken?: CancellationTokenLike
+		}
 	): Promise<any> {
+		super.verifyNotDisposed();
+
 		let path = webMethodName;
-		if (queryArgs) {
-			path += "?" + querystring.stringify(queryArgs);
+		let headers: http.OutgoingHttpHeaders | undefined;
+		let cancellationToken: CancellationTokenLike | undefined;
+
+		if (opts) {
+			headers = opts.headers;
+			cancellationToken = opts.cancellationToken;
+			if (opts.queryArgs) {
+				path += "?" + querystring.stringify(opts.queryArgs);
+			}
 		}
 
-		return this.invokeGet(path, headers);
+		return this.invokeGet(path, { headers, cancellationToken });
 	}
-	protected invokeWebMethodPost(webMethodName: string,
-		postArgs: { [key: string]: string }, headers?: http.OutgoingHttpHeaders
+	protected invokeWebMethodPost(
+		webMethodName: string,
+		opts?: {
+			postArgs?: { [key: string]: string },
+			headers?: http.OutgoingHttpHeaders,
+			cancellationToken?: CancellationTokenLike
+		}
 	): Promise<any> {
-		const bodyStr = querystring.stringify(postArgs);
-		const body: Buffer = Buffer.from(bodyStr);
+		super.verifyNotDisposed();
 
-		const postHeaders = {
+		const bodyStr = opts && opts.postArgs && querystring.stringify(opts.postArgs);
+		const body = bodyStr ? Buffer.from(bodyStr) : Buffer.alloc(0);
+
+		let headers = {
 			"Content-Type": "application/x-www-form-urlencoded",
 			"Content-Length": body.byteLength
 		};
 
-		return this.invokePost(webMethodName, body, Object.assign(postHeaders, headers));
+		if (opts && opts.headers) {
+			headers = { ...headers, ...opts.headers };
+		}
+
+		const cancellationToken = opts && opts.cancellationToken;
+
+		return this.invokePost(webMethodName, body, { headers, cancellationToken });
 	}
-	protected async invokeGet(path: string, headers?: http.OutgoingHttpHeaders): Promise<any> {
+	protected async invokeGet(
+		path: string,
+		opts?: {
+			headers?: http.OutgoingHttpHeaders,
+			cancellationToken?: CancellationTokenLike
+		}
+	): Promise<any> {
+		super.verifyNotDisposed();
+
+		const cancellationToken = opts && opts.cancellationToken;
+
 		let limitToken: LimitToken | null = null;
 		if (this._limit !== undefined) {
-			limitToken = await this._limit.instance.accrueTokenLazy(this._limit.timeout || 500);
+			if (cancellationToken) {
+				limitToken = await this._limit.instance.accrueTokenLazy(this._limit.timeout || 500, cancellationToken);
+			} else {
+				limitToken = await this._limit.instance.accrueTokenLazy(this._limit.timeout || 500);
+			}
 		}
 		try {
 			const url: URL = new URL(path, this._baseUrl);
-			const result = await this._webClient.invoke({ url, method: "GET", headers });
+			const headers = opts && opts.headers;
+
+			const result = await this._webClient.invoke({ url, method: "GET", headers }, cancellationToken);
+
 			return JSON.parse(result.toString());
 		} finally {
 			if (limitToken !== null) {
@@ -109,19 +148,42 @@ export class WebApiClient implements DisposableLike {
 			}
 		}
 	}
-	protected async invokePost(path: string, body: Buffer, headers?: http.OutgoingHttpHeaders): Promise<any> {
+	protected async invokePost(
+		path: string,
+		body: Buffer,
+		opts?: {
+			headers?: http.OutgoingHttpHeaders,
+			cancellationToken?: CancellationTokenLike
+		}): Promise<any> {
+		super.verifyNotDisposed();
+
+		const cancellationToken = opts && opts.cancellationToken;
+
 		let limitToken: LimitToken | null = null;
 		if (this._limit !== undefined) {
-			limitToken = await this._limit.instance.accrueTokenLazy(this._limit.timeout || 500);
+			if (cancellationToken) {
+				limitToken = await this._limit.instance.accrueTokenLazy(this._limit.timeout || 500, cancellationToken);
+			} else {
+				limitToken = await this._limit.instance.accrueTokenLazy(this._limit.timeout || 500);
+			}
 		}
 		try {
 			const url: URL = new URL(path, this._baseUrl);
-			const result = await this._webClient.invoke({ url, method: "POST", body, headers });
+			const headers = opts && opts.headers;
+
+			const result = await this._webClient.invoke({ url, method: "POST", body, headers }, cancellationToken);
+
 			return JSON.parse(result.toString());
 		} finally {
 			if (limitToken !== null) {
 				limitToken.commit();
 			}
+		}
+	}
+
+	protected async onDispose(): Promise<void> {
+		if (this._limit !== undefined) {
+			await this._limit.instance.dispose();
 		}
 	}
 }

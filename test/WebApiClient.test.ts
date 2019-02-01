@@ -1,18 +1,23 @@
 import * as http from "http";
 import { assert } from "chai";
+import { CancellationTokenLike } from "@zxteam/contract";
 import LimitFactory from "limit.js";
+import Task, { CancelledError } from "ptask.js";
 
 import { WebApiClient } from "../src";
 
 describe("WebApiClient tests", function () {
 	describe("Tests with limits", function () {
 		class MyApiClient extends WebApiClient {
-			public invokeGet(path: string, headers?: http.OutgoingHttpHeaders) {
-				return super.invokeGet(path, headers);
+			public invokeGet(path: string, opts?: {
+				headers?: http.OutgoingHttpHeaders,
+				cancellationToken?: CancellationTokenLike
+			}) {
+				return super.invokeGet(path, opts);
 			}
 		}
 
-		it("WebApiClient should GET http:", async function () {
+		it("WebApiClient GET should invoke http:// (with limit)", async function () {
 			const apiClient = new MyApiClient({
 				url: "http://www.google.com",
 				limit: {
@@ -22,16 +27,16 @@ describe("WebApiClient tests", function () {
 						perHour: 50,
 						parallel: 2
 					},
-					timeout: 3000
+					timeout: 3000 // timeout for accure token
 				},
 				webClient: {
-					timeout: 1000
+					timeout: 1000 // timeout for web request
 				}
 			});
+			const jobs: Array<Promise<void>> = [];
+			const errors: Array<any> = [];
+			let completeCount = 0;
 			try {
-				const jobs: Array<Promise<void>> = [];
-				const errors: Array<any> = [];
-				let completeCount = 0;
 				for (let index = 0; index < 10; index++) {
 					jobs.push(
 						apiClient.invokeGet("a")
@@ -43,7 +48,55 @@ describe("WebApiClient tests", function () {
 				assert.equal(completeCount + errors.length, 4);
 			} finally {
 				await apiClient.dispose();
+				await new Promise((r) => setTimeout(r, 5));
+			}
+			assert.equal(completeCount + errors.length, 10);
+		});
+
+		it("WebApiClient GET should cancel() ", async function () {
+			const apiClient = new MyApiClient({
+				url: "http://www.google.com",
+				limit: {
+					opts: {
+						perSecond: 2,
+						perMinute: 4,
+						perHour: 50,
+						parallel: 2
+					},
+					timeout: 3000 // timeout for accure token
+				},
+				webClient: {
+					timeout: 1000 // timeout for web request
+				}
+			});
+			const cts = Task.createCancellationTokenSource();
+			const jobs: Array<Promise<void>> = [];
+			const errors: Array<any> = [];
+			let completeCount = 0;
+			try {
+				for (let index = 0; index < 10; index++) {
+					jobs.push(
+						apiClient.invokeGet("a", { cancellationToken: cts.token })
+							.then(() => { ++completeCount; })
+							.catch((reason: any) => { errors.push(reason); })
+					);
+				}
+				await new Promise((r) => setTimeout(r, 2500));
+				assert.equal(completeCount + errors.length, 4);
+				cts.cancel();
+				await new Promise((r) => setTimeout(r, 25));
+				assert.equal(completeCount + errors.length, 10);
+				assert.isTrue(errors.length >= 6);
+				errors.slice(errors.length - 6).forEach(e => assert.instanceOf(e, CancelledError));
+			} finally {
+				await apiClient.dispose();
 			}
 		});
+
+		// [0, 1, 2, 3].forEach(i => {
+		// 	it(`Stub ${i}`, async function () {
+		// 		await new Promise((r) => setTimeout(r, 250));
+		// 	});
+		// });
 	});
 });

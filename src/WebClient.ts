@@ -2,7 +2,8 @@ import * as http from "http";
 import * as https from "https";
 import { URL } from "url";
 
-import { Logger, loggerFactory } from "@zxteam/logger";
+import { loggerFactory } from "@zxteam/logger";
+import { LoggerLike, CancellationTokenLike } from "@zxteam/contract";
 
 export class WebError extends Error {
 	public readonly statusCode: number;
@@ -44,24 +45,24 @@ export interface WebClientInvokeData {
 	body?: Buffer;
 }
 export interface WebClientLike {
-	invoke(data: WebClientInvokeData): Promise<Buffer>;
+	invoke(data: WebClientInvokeData, cancellationToken?: CancellationTokenLike): Promise<Buffer>;
 }
 export class WebClient implements WebClientLike {
 	private readonly _proxyOpts: ProxyOpts | null;
 	private readonly _sslOpts: SslOpts | null;
-	private _log: Logger;
-	private _timeout: number | null;
+	private _log: LoggerLike;
+	private _requestTimeout: number | null;
 	public constructor(opts?: WebClient.Opts) {
 		this._proxyOpts = opts && opts.proxyOpts || null;
 		this._sslOpts = opts && opts.sslOpts || null;
-		this._timeout = opts && opts.timeout || null;
+		this._requestTimeout = opts && opts.timeout || null;
 	}
 
 	public get log() { return this._log || (this._log = loggerFactory.getLogger(this.constructor.name)); }
-	public set log(value: Logger) { this._log = value; }
+	public set log(value: LoggerLike) { this._log = value; }
 
-	public invoke({ url, method, headers, body }: WebClientInvokeData): Promise<Buffer> {
-		if (this.log.isTraceEnabled()) { this.log.trace("begin invoke(...)", url, method, headers, body); }
+	public invoke({ url, method, headers, body }: WebClientInvokeData, cancellationToken?: CancellationTokenLike): Promise<Buffer> {
+		if (this.log.isTraceEnabled) { this.log.trace("begin invoke(...)", url, method, headers, body); }
 		return new Promise<Buffer>((resolve, reject) => {
 			const responseHandler = (response: http.IncomingMessage) => {
 				const responseDataChunks: Array<Buffer> = [];
@@ -82,6 +83,24 @@ export class WebClient implements WebClientLike {
 					}
 				});
 			};
+			if (cancellationToken) { cancellationToken.throwIfCancellationRequested(); }
+			function registerCancelOperationIfNeeded(requestLike: { abort: () => void }) {
+				if (cancellationToken) {
+					const cb = () => {
+						cancellationToken.removeCancelListener(cb);
+						requestLike.abort();
+						try {
+							cancellationToken.throwIfCancellationRequested(); // Shoud raise error
+							// Guard for broken implementation of cancellationToken
+							reject(new Error("Cancelled by user"));
+						} catch (e) {
+							reject(e);
+						}
+					};
+					cancellationToken.addCancelListener(cb);
+				}
+			}
+
 			const proxyOpts = this._proxyOpts;
 			if (proxyOpts && proxyOpts.type === "http") {
 				const reqOpts = {
@@ -92,20 +111,21 @@ export class WebClient implements WebClientLike {
 					method,
 					headers: Object.assign({ Host: url.host }, headers)
 				};
-				if (this.log.isTraceEnabled()) { this.log.trace("call http.request", reqOpts); }
+				if (this.log.isTraceEnabled) { this.log.trace("call http.request", reqOpts); }
 				const request = http.request(reqOpts, responseHandler)
 					.on("error", error => {
 						this.log.debug("http.request failed", error);
 						reject(error);
 					});
-				if (this._timeout !== null) {
-					request.setTimeout(this._timeout, () => { reject(new Error("Timeout")); });
+				if (this._requestTimeout !== null) {
+					request.setTimeout(this._requestTimeout, () => { reject(new Error("Timeout")); });
 				}
 				if (body) {
-					if (this.log.isTraceEnabled()) { this.log.trace("write body", body.toString()); }
+					if (this.log.isTraceEnabled) { this.log.trace("write body", body.toString()); }
 					request.write(body);
 				}
 				request.end();
+				registerCancelOperationIfNeeded(request);
 			} else {
 				const reqOpts: https.RequestOptions = {
 					protocol: url.protocol,
@@ -132,35 +152,37 @@ export class WebClient implements WebClientLike {
 							}
 						}
 					}
-					if (this.log.isTraceEnabled()) { this.log.trace("call https.request", reqOpts); }
+					if (this.log.isTraceEnabled) { this.log.trace("call https.request", reqOpts); }
 					const request = https.request(reqOpts, responseHandler)
 						.on("error", error => {
 							this.log.debug("https.request failed", error);
 							reject(error);
 						});
-					if (this._timeout !== null) {
-						request.setTimeout(this._timeout, () => { reject(new Error("Timeout")); });
+					if (this._requestTimeout !== null) {
+						request.setTimeout(this._requestTimeout, () => { reject(new Error("Timeout")); });
 					}
 					if (body) {
-						if (this.log.isTraceEnabled()) { this.log.trace("write body", body.toString()); }
+						if (this.log.isTraceEnabled) { this.log.trace("write body", body.toString()); }
 						request.write(body);
 					}
 					request.end();
+					registerCancelOperationIfNeeded(request);
 				} else {
-					if (this.log.isTraceEnabled()) { this.log.trace("call http.request", reqOpts); }
+					if (this.log.isTraceEnabled) { this.log.trace("call http.request", reqOpts); }
 					const request = http.request(reqOpts, responseHandler)
 						.on("error", error => {
 							this.log.debug("http.request failed", error);
 							reject(error);
 						});
-					if (this._timeout !== null) {
-						request.setTimeout(this._timeout, () => { reject(new Error("Timeout")); });
+					if (this._requestTimeout !== null) {
+						request.setTimeout(this._requestTimeout, () => { reject(new Error("Timeout")); });
 					}
 					if (body) {
-						if (this.log.isTraceEnabled()) { this.log.trace("write body", body.toString()); }
+						if (this.log.isTraceEnabled) { this.log.trace("write body", body.toString()); }
 						request.write(body);
 					}
 					request.end();
+					registerCancelOperationIfNeeded(request);
 				}
 			}
 		});
