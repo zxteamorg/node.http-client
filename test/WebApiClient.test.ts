@@ -1,7 +1,6 @@
 import * as http from "http";
 import { assert } from "chai";
 import { CancellationTokenLike } from "@zxteam/contract";
-import LimitFactory from "limit.js";
 import Task, { CancelledError } from "ptask.js";
 
 import { WebApiClient } from "../src";
