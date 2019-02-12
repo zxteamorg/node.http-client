@@ -1,6 +1,6 @@
 {
 	"name": "@zxteam/webclient",
-	"version": "1.0.0",
+	"version": "2.0.0",
 	"description": "TBD",
 	"author": {
 		"name": "Maxim Anurin",
@@ -15,15 +15,15 @@
 	],
 	"license": "MIT",
 	"devDependencies": {
-		"@types/node": "^10.12.21",
+		"@types/node": "^10.12.24",
 		"@zxnode/build": "0.0.30",
-		"ptask.js": "^0.0.9"
+		"ptask.js": "^2.0.0"
 	},
 	"dependencies": {
-		"@zxteam/contract": "^1.0.6",
-		"@zxteam/disposable": "^1.0.3",
-		"@zxteam/logger": "^1.0.0",
-		"limit.js": "^0.0.9"
+		"@zxteam/contract": "^2.0.0",
+		"@zxteam/disposable": "^2.0.0",
+		"@zxteam/logger": "^2.0.0",
+		"limit.js": "^2.0.0"
 	},
 	"keywords": [],
 	"repository": {

@@ -2,7 +2,7 @@ import { assert } from "chai";
 import { URL } from "url";
 import { Task, CancelledError } from "ptask.js";
 
-import WebClient from "../src/WebClient";
+import WebClient from "../src/index";
 import { Socket, Server } from "net";
 import * as http from "http";
 
@@ -43,6 +43,33 @@ describe("WebClient tests", function () {
 			assert.isFalse(thenCalled);
 			assert.isDefined(expectedError);
 			assert.instanceOf(expectedError, CancelledError);
+		});
+
+		it("Should handle HTTP 301 as normal response", async function () {
+			const listeningDefer: any = {};
+			listeningDefer.promise = new Promise(r => { listeningDefer.resolve = r; });
+			const fakeServer = new http.Server((req, res) => {
+				res.writeHead(301, "Fake moved");
+				res.end("Fake data");
+			});
+			fakeServer.listen(65535, "127.0.0.1", () => {
+				listeningDefer.resolve();
+			});
+			await listeningDefer.promise;
+			try {
+				const httpClient = new WebClient({ timeout: 500 });
+				const response = await httpClient.invoke({ url: new URL("http://127.0.0.1:65535"), method: "GET" });
+
+				assert.isDefined(response);
+				assert.equal(response.statusCode, 301);
+				assert.equal(response.statusMessage, "Fake moved");
+				assert.equal((response.body as Buffer).toString(), "Fake data");
+			} finally {
+				const closeDefer: any = {};
+				closeDefer.promise = new Promise(r => { closeDefer.resolve = r; });
+				fakeServer.close(() => closeDefer.resolve());
+				await closeDefer.promise;
+			}
 		});
 
 		describe("Error handling tests", async function () {
@@ -155,36 +182,6 @@ describe("WebClient tests", function () {
 					assert.instanceOf(expectedError, WebClient.CommunicationError);
 					assert.instanceOf(expectedError.innerError, Error);
 					assert.include(expectedError.innerError.code, "ECONNRESET");
-				} finally {
-					const closeDefer: any = {};
-					closeDefer.promise = new Promise(r => { closeDefer.resolve = r; });
-					fakeServer.close(() => closeDefer.resolve());
-					await closeDefer.promise;
-				}
-			});
-			it("Should handle HTTP 301 as WebError", async function () {
-				const listeningDefer: any = {};
-				listeningDefer.promise = new Promise(r => { listeningDefer.resolve = r; });
-				const fakeServer = new http.Server((req, res) => {
-					res.writeHead(301, "Fake moved");
-					res.end("Fake data");
-				});
-				fakeServer.listen(65535, "127.0.0.1", () => {
-					listeningDefer.resolve();
-				});
-				await listeningDefer.promise;
-				try {
-					const httpClient = new WebClient({ timeout: 500 });
-					let expectedError;
-					try {
-						await httpClient.invoke({ url: new URL("http://127.0.0.1:65535"), method: "GET" });
-					} catch (e) {
-						expectedError = e;
-					}
-					assert.isDefined(expectedError);
-					assert.instanceOf(expectedError, WebClient.WebError);
-					assert.instanceOf(expectedError.errorData, Buffer);
-					assert.equal(expectedError.errorData.toString(), "Fake data");
 				} finally {
 					const closeDefer: any = {};
 					closeDefer.promise = new Promise(r => { closeDefer.resolve = r; });
