@@ -1,7 +1,7 @@
 {
 	"name": "@zxteam/webclient",
-	"version": "2.0.0",
-	"description": "TBD",
+	"version": "2.1.0",
+	"description": "Web Client",
 	"author": {
 		"name": "Maxim Anurin",
 		"email": "maxim.anurin@zxteam.org",
@@ -22,8 +22,7 @@
 	"dependencies": {
 		"@zxteam/contract": "^2.0.0",
 		"@zxteam/disposable": "^2.0.0",
-		"@zxteam/logger": "^2.0.0",
-		"limit.js": "^2.0.0"
+		"@zxteam/logger": "^2.0.0"
 	},
 	"keywords": [],
 	"repository": {

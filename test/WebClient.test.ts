@@ -210,8 +210,8 @@ describe("WebClient tests", function () {
 					}
 					assert.isDefined(expectedError);
 					assert.instanceOf(expectedError, WebClient.WebError);
-					assert.instanceOf(expectedError.errorData, Buffer);
-					assert.equal(expectedError.errorData.toString(), "Fake data");
+					assert.instanceOf(expectedError.body, Buffer);
+					assert.equal(expectedError.body.toString(), "Fake data");
 				} finally {
 					const closeDefer: any = {};
 					closeDefer.promise = new Promise(r => { closeDefer.resolve = r; });

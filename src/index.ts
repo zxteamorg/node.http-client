@@ -14,9 +14,9 @@ export interface WebClientInvokeArgs {
 }
 export interface WebClientInvokeResult {
 	statusCode: number;
-	statusMessage?: string;
+	statusMessage: string;
 	headers: http.IncomingHttpHeaders;
-	body?: Buffer;
+	body: Buffer;
 }
 
 export type WebClientLike = InvokeTransportLike<WebClientInvokeArgs, WebClientInvokeResult>;
@@ -49,23 +49,18 @@ export class WebClient extends Disposable implements WebClientLike {
 				response.on("data", (chunk: Buffer) => responseDataChunks.push(chunk));
 				response.on("error", error => reject(error));
 				response.on("end", () => {
-					const finalData = Buffer.concat(responseDataChunks);
-					const statusCode = response.statusCode || 500;
-					if (statusCode < 400) {
+					const respStatus = response.statusCode || 500;
+					const respDescription = response.statusMessage || "";
+					const respHeaders = response.headers;
+					const respBody = Buffer.concat(responseDataChunks);
+
+					if (respStatus < 400) {
 						return resolve({
-							statusCode,
-							statusMessage: response.statusMessage,
-							headers: response.headers,
-							body: finalData
+							statusCode: respStatus, statusMessage: respDescription,
+							headers: respHeaders, body: respBody
 						});
 					} else {
-						return reject(
-							new WebClient.WebError(
-								statusCode,
-								response.statusMessage || "",
-								finalData
-							)
-						);
+						return reject(new WebClient.WebError(respStatus, respDescription, respHeaders, respBody));
 					}
 				});
 			};
@@ -222,42 +217,64 @@ export namespace WebClient {
 	}
 
 	export type ProxyOpts = HttpProxyOpts | Socks5ProxyOpts;
+
 	export interface HttpProxyOpts {
 		type: "http";
 		host: string;
 		port: number;
 	}
+
 	export interface Socks5ProxyOpts {
 		type: "socks5";
 	}
+
 	export type SslOpts = SslOptsBase | SslCertOpts | SslPfxOpts;
+
 	export interface SslOptsBase {
 		ca?: Buffer;
 		rejectUnauthorized?: boolean;
 	}
+
 	export interface SslCertOpts extends SslOptsBase {
 		key: Buffer;
 		cert: Buffer;
 	}
+
 	export interface SslPfxOpts extends SslOptsBase {
 		pfx: Buffer;
 		passphrase: string;
 	}
 
+	/** Base error type for WebClient */
 	export class Error extends GlobalError { }
 
+	/**
+	 * WebError is a wrapper of HTTP responses with code 4xx/5xx
+	 */
 	export class WebError extends Error {
-		public readonly statusCode: number;
-		public readonly statusDescription: string;
-		public readonly errorData: Buffer;
-		constructor(statusCode: number, statusDescription: string, data: Buffer) {
+		private readonly _statusCode: number;
+		private readonly _statusDescription: string;
+		private readonly _headers: http.IncomingHttpHeaders;
+		private readonly _body: Buffer;
+
+		public constructor(statusCode: number, statusDescription: string, headers: http.IncomingHttpHeaders, body: Buffer) {
 			super(`${statusCode} ${statusDescription}`);
-			this.statusCode = statusCode;
-			this.statusDescription = statusDescription;
-			this.errorData = data;
+			this._statusCode = statusCode;
+			this._statusDescription = statusDescription;
+			this._headers = headers;
+			this._body = body;
 		}
+
+		public get statusCode(): number { return this._statusCode; }
+		public get statusDescription(): string { return this._statusDescription; }
+		public get headers(): http.IncomingHttpHeaders { return this._headers; }
+		public get body(): Buffer { return this._body; }
 	}
 
+	/**
+	 * CommunicationError is a wrapper over underlaying network errors.
+	 * Such a DNS lookup issues, TCP connection issues, etc...
+	 */
 	export class CommunicationError extends Error {
 		private readonly _innerError?: Error;
 
