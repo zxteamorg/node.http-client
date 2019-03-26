@@ -1,6 +1,6 @@
 {
 	"name": "@zxteam/webclient",
-	"version": "2.1.0",
+	"version": "3.0.2",
 	"description": "Web Client",
 	"author": {
 		"name": "Maxim Anurin",
@@ -10,19 +10,22 @@
 	"contributors": [
 		{
 			"name": "Serg Zgama",
-			"email": "serg.zgama@zxteam.org"
+			"email": "serhii.zghama@zxteam.org"
 		}
 	],
 	"license": "MIT",
-	"devDependencies": {
-		"@types/node": "^10.12.24",
-		"@zxnode/build": "0.0.30",
-		"ptask.js": "^2.0.0"
-	},
 	"dependencies": {
-		"@zxteam/contract": "^2.0.0",
-		"@zxteam/disposable": "^2.0.0",
-		"@zxteam/logger": "^2.0.0"
+		"@zxteam/contract": "^3.0.2",
+		"@zxteam/disposable": "^3.0.2",
+		"@zxteam/logger": "^3.0.2",
+		"ptask.js": "^3.0.2"
+	},
+	"devDependencies": {
+		"@types/node": "^11.11.7",
+		"@zxnode/build": "0.0.32"
+	},
+	"engines": {
+		"node": ">=11"
 	},
 	"keywords": [],
 	"repository": {
