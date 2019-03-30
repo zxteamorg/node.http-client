@@ -1,6 +1,6 @@
 import { assert } from "chai";
 import { URL } from "url";
-import { Task, CancelledError } from "ptask.js";
+import { Task, CancelledError, DUMMY_CANCELLATION_TOKEN } from "ptask.js";
 
 import WebClient from "../src/index";
 import { Socket, Server } from "net";
@@ -14,12 +14,20 @@ describe("WebClient tests", function () {
 	describe("Tests without proxy", function () {
 		it("WebClient should GET http:", async function () {
 			const httpClient = new WebClient();
-			await httpClient.invoke({ url: new URL("?a", "http://www.google.com"), method: "GET", headers: { test: "test" } });
+			await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
+				url: new URL("?a", "http://www.google.com"),
+				method: "GET",
+				headers: { test: "test" }
+			});
 		});
 
 		it("WebClient should GET https:", async function () {
 			const httpClient = new WebClient();
-			await httpClient.invoke({ url: new URL("?a", "http://www.google.com"), method: "GET", headers: { test: "test" } });
+			await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
+				url: new URL("?a", "http://www.google.com"),
+				method: "GET",
+				headers: { test: "test" }
+			});
 		});
 
 		it("WebClient should cancel() invoke", async function () {
@@ -29,10 +37,11 @@ describe("WebClient tests", function () {
 			let thenCalled = false;
 
 			const httpClient = new WebClient();
-			httpClient.invoke(
-				{ url: new URL("?a", "http://www.google.com"), method: "GET", headers: { test: "test" } },
-				cts.token
-			)
+			httpClient.invoke(cts.token, {
+				url: new URL("?a", "http://www.google.com"),
+				method: "GET",
+				headers: { test: "test" }
+			})
 				.then(() => { thenCalled = true; })
 				.catch((reason) => { expectedError = reason; });
 
@@ -58,7 +67,7 @@ describe("WebClient tests", function () {
 			await listeningDefer.promise;
 			try {
 				const httpClient = new WebClient({ timeout: 500 });
-				const response = await httpClient.invoke({ url: new URL("http://127.0.0.1:65535"), method: "GET" });
+				const response = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" });
 
 				assert.isDefined(response);
 				assert.equal(response.statusCode, 301);
@@ -90,7 +99,7 @@ describe("WebClient tests", function () {
 				const httpClient = new WebClient();
 				let expectedError;
 				try {
-					await httpClient.invoke({ url: new URL("http://localhost:1"), method: "GET" });
+					await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://localhost:1"), method: "GET" });
 				} catch (e) {
 					expectedError = e;
 				}
@@ -103,7 +112,7 @@ describe("WebClient tests", function () {
 				const httpClient = new WebClient();
 				let expectedError;
 				try {
-					await httpClient.invoke({ url: new URL("http://not.exsting.domain.no"), method: "GET" });
+					await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://not.exsting.domain.no"), method: "GET" });
 				} catch (e) {
 					expectedError = e;
 				}
@@ -117,7 +126,7 @@ describe("WebClient tests", function () {
 				let expectedError;
 				try {
 					// Connecting to NON existng IP to emulate connect timeout
-					await httpClient.invoke({ url: new URL("http://192.168.255.255:65535"), method: "GET" });
+					await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://192.168.255.255:65535"), method: "GET" });
 				} catch (e) {
 					expectedError = e;
 				}
@@ -143,7 +152,7 @@ describe("WebClient tests", function () {
 					const httpClient = new WebClient({ timeout: 50 });
 					let expectedError;
 					try {
-						await httpClient.invoke({ url: new URL("http://127.0.0.1:65535"), method: "GET" });
+						await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" });
 					} catch (e) {
 						expectedError = e;
 					}
@@ -174,7 +183,7 @@ describe("WebClient tests", function () {
 					const httpClient = new WebClient({ timeout: 1000 });
 					let expectedError;
 					try {
-						await httpClient.invoke({ url: new URL("http://127.0.0.1:65535"), method: "GET" });
+						await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" });
 					} catch (e) {
 						expectedError = e;
 					}
@@ -204,7 +213,7 @@ describe("WebClient tests", function () {
 					const httpClient = new WebClient({ timeout: 500 });
 					let expectedError;
 					try {
-						await httpClient.invoke({ url: new URL("http://127.0.0.1:65535"), method: "GET" });
+						await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" });
 					} catch (e) {
 						expectedError = e;
 					}
@@ -230,17 +239,25 @@ describe("WebClient tests", function () {
 		};
 		it("WebClient should GET http: with proxy", async function () {
 			const httpClient = new WebClient({ proxyOpts });
-			const res = await httpClient.invoke({ method: "GET", url: new URL("http://www.google.com?a"), headers: { test: "test" } });
+			const res = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
+				method: "GET",
+				url: new URL("http://www.google.com?a"),
+				headers: { test: "test" }
+			});
 		});
 
 		it("WebClient should GET https: with proxy", async function () {
 			const httpClient = new WebClient({ proxyOpts });
-			const res = await httpClient.invoke({ method: "GET", url: new URL("http://www.google.com?a"), headers: { test: "test" } });
+			const res = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
+				method: "GET",
+				url: new URL("http://www.google.com?a"),
+				headers: { test: "test" }
+			});
 		});
 
 		it("WebClient should GET data from Poloniex: with proxy", async function () {
 			const httpClient = new WebClient({ proxyOpts });
-			const res = await httpClient.invoke({
+			const res = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
 				method: "GET",
 				url: new URL("https://poloniex.com/public?command=returnTicker")
 			});

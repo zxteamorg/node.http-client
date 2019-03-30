@@ -38,8 +38,8 @@ export class WebClient extends Disposable implements WebClientLike {
 	public set log(value: Logger) { this._log = value; }
 
 	public invoke(
-		{ url, method, headers, body }: WebClientInvokeArgs,
-		cancellationToken?: CancellationToken
+		cancellationToken: CancellationToken,
+		{ url, method, headers, body }: WebClientInvokeArgs
 	): TaskLike<WebClientInvokeResult> {
 		super.verifyNotDisposed();
 		return Task.run(() => {
