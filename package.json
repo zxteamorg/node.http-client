@@ -9,16 +9,16 @@
 	},
 	"contributors": [
 		{
-			"name": "Serg Zgama",
+			"name": "Serhii Zghama",
 			"email": "serhii.zghama@zxteam.org"
 		}
 	],
 	"license": "MIT",
 	"dependencies": {
-		"@zxteam/contract": "^3.0.2",
-		"@zxteam/disposable": "^3.0.2",
-		"@zxteam/logger": "^3.0.2",
-		"ptask.js": "^3.0.2"
+		"@zxteam/contract": "^3.2.1",
+		"@zxteam/disposable": "^3.2.2",
+		"@zxteam/logger": "^3.2.1",
+		"ptask.js": "^3.2.1"
 	},
 	"devDependencies": {
 		"@types/node": "^11.11.7",
