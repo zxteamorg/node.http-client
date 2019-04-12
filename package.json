@@ -21,8 +21,8 @@
 		"ptask.js": "^3.2.1"
 	},
 	"devDependencies": {
-		"@types/node": "^11.11.7",
-		"@zxnode/build": "0.0.32"
+		"@types/node": "^11.13.4",
+		"@zxnode/build": "^0.0.33"
 	},
 	"engines": {
 		"node": ">=11"
