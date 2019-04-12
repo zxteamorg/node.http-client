@@ -29,13 +29,17 @@ export class WebClient extends Disposable implements WebClientLike {
 	private _requestTimeout: number | null;
 	public constructor(opts?: WebClient.Opts) {
 		super();
+		if (opts !== undefined && opts.log !== undefined) {
+			this._log = opts.log;
+		} else {
+			this._log = loggerFactory.getLogger(this.constructor.name);
+		}
 		this._proxyOpts = opts && opts.proxyOpts || null;
 		this._sslOpts = opts && opts.sslOpts || null;
 		this._requestTimeout = opts && opts.timeout || null;
 	}
 
-	public get log() { return this._log || (this._log = loggerFactory.getLogger(this.constructor.name)); }
-	public set log(value: Logger) { this._log = value; }
+	protected get log() { return this._log; }
 
 	public invoke(
 		cancellationToken: CancellationToken,
@@ -216,6 +220,7 @@ export namespace WebClient {
 		timeout?: number;
 		proxyOpts?: ProxyOpts;
 		sslOpts?: SslOpts;
+		log?: Logger;
 	}
 
 	export type ProxyOpts = HttpProxyOpts | Socks5ProxyOpts;
