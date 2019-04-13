@@ -253,12 +253,14 @@ export namespace WebClient {
 	}
 
 	/** Base error type for WebClient */
-	export class Error extends GlobalError { }
+	export class Error extends GlobalError {
+	}
 
 	/**
 	 * WebError is a wrapper of HTTP responses with code 4xx/5xx
 	 */
 	export class WebError extends Error {
+		public readonly name = "WebClient.WebError";
 		private readonly _statusCode: number;
 		private readonly _statusDescription: string;
 		private readonly _headers: http.IncomingHttpHeaders;
@@ -283,6 +285,7 @@ export namespace WebClient {
 	 * Such a DNS lookup issues, TCP connection issues, etc...
 	 */
 	export class CommunicationError extends Error {
+		public readonly name = "WebClient.CommunicationError";
 		private readonly _innerError?: Error;
 
 		public constructor(message: string, innerError?: Error) {
