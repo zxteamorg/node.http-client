@@ -1,11 +1,20 @@
+const { name, version } = require(require("path").join(__dirname, "..", "package.json"));
+const G: any = global || window || {};
+const PACKAGE_GUARD: symbol = Symbol.for(name);
+if (PACKAGE_GUARD in G) {
+	throw new Error(`Conflict module version. Look like two different version loaded inside the process: ${G[PACKAGE_GUARD]} and ${version}`);
+}
+G[PACKAGE_GUARD] = version;
+
+
 import * as http from "http";
 import * as https from "https";
 import { URL } from "url";
 
 import { Logger, CancellationToken, InvokeTransport, Task as TaskLike } from "@zxteam/contract";
 import { Disposable } from "@zxteam/disposable";
-import { loggerFactory } from "@zxteam/logger";
-import { Task } from "ptask.js";
+import { loggerManager } from "@zxteam/logger";
+import { Task } from "@zxteam/task";
 
 export interface WebClientInvokeArgs {
 	url: URL;
@@ -32,7 +41,7 @@ export class WebClient extends Disposable implements WebClientLike {
 		if (opts !== undefined && opts.log !== undefined) {
 			this._log = opts.log;
 		} else {
-			this._log = loggerFactory.getLogger(this.constructor.name);
+			this._log = loggerManager.getLogger(this.constructor.name);
 		}
 		this._proxyOpts = opts && opts.proxyOpts || null;
 		this._sslOpts = opts && opts.sslOpts || null;

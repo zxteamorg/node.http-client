@@ -1,6 +1,6 @@
 import { assert } from "chai";
 import { URL } from "url";
-import { Task, CancelledError, DUMMY_CANCELLATION_TOKEN } from "ptask.js";
+import { Task, CancelledError, DUMMY_CANCELLATION_TOKEN } from "@zxteam/task";
 
 import WebClient from "../src/index";
 import { Socket, Server } from "net";
@@ -42,6 +42,7 @@ describe("WebClient tests", function () {
 				method: "GET",
 				headers: { test: "test" }
 			})
+				.promise
 				.then(() => { thenCalled = true; })
 				.catch((reason) => { expectedError = reason; });
 
@@ -67,7 +68,7 @@ describe("WebClient tests", function () {
 			await listeningDefer.promise;
 			try {
 				const httpClient = new WebClient({ timeout: 500 });
-				const response = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" });
+				const response = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" }).promise;
 
 				assert.isDefined(response);
 				assert.equal(response.statusCode, 301);
