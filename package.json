@@ -1,13 +1,18 @@
 {
 	"name": "@zxteam/webclient",
-	"version": "4.0.0",
+	"version": "5.0.1",
 	"description": "Web Client",
 	"author": {
-		"name": "Maxim Anurin",
-		"email": "maxim.anurin@zxteam.org",
-		"url": "http://www.anurin.name"
+		"name": "ZXTeam",
+		"email": "pub@project.zxteam.org",
+		"url": "http://www.zxteam.org"
 	},
 	"contributors": [
+		{
+			"name": "Maxim Anurin",
+			"email": "maxim.anurin@zxteam.org",
+			"url": "http://www.anurin.name"
+		},
 		{
 			"name": "Serhii Zghama",
 			"email": "serhii.zghama@zxteam.org"
@@ -15,14 +20,13 @@
 	],
 	"license": "MIT",
 	"dependencies": {
-		"@zxteam/contract": "^4.0.0",
-		"@zxteam/disposable": "^4.0.0",
-		"@zxteam/logger": "^4.0.0",
-		"@zxteam/task": "^4.0.0"
+		"@zxteam/contract": "^5.0.1",
+		"@zxteam/logger": "^5.0.0",
+		"@zxteam/task": "^5.0.0"
 	},
 	"devDependencies": {
-		"@types/node": "^11.13.9",
-		"@zxnode/build": "^0.0.33"
+		"@types/node": "^11.13.14",
+		"@zxnode/build": "^0.0.34"
 	},
 	"engines": {
 		"node": ">=11"

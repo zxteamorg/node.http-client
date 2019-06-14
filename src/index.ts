@@ -11,8 +11,7 @@ import * as http from "http";
 import * as https from "https";
 import { URL } from "url";
 
-import { Logger, CancellationToken, InvokeTransport, Task as TaskLike } from "@zxteam/contract";
-import { Disposable } from "@zxteam/disposable";
+import * as zxteam from "@zxteam/contract";
 import { loggerManager } from "@zxteam/logger";
 import { Task } from "@zxteam/task";
 
@@ -29,15 +28,14 @@ export interface WebClientInvokeResult {
 	body: Buffer;
 }
 
-export type WebClientLike = InvokeTransport<WebClientInvokeArgs, WebClientInvokeResult>;
+export type WebClientInvokeChannel = zxteam.InvokeChannel<WebClientInvokeArgs, WebClientInvokeResult>;
 
-export class WebClient extends Disposable implements WebClientLike {
+export class WebClient implements WebClientInvokeChannel {
 	private readonly _proxyOpts: WebClient.ProxyOpts | null;
 	private readonly _sslOpts: WebClient.SslOpts | null;
-	private _log: Logger;
+	private _log: zxteam.Logger;
 	private _requestTimeout: number | null;
 	public constructor(opts?: WebClient.Opts) {
-		super();
 		if (opts !== undefined && opts.log !== undefined) {
 			this._log = opts.log;
 		} else {
@@ -51,10 +49,9 @@ export class WebClient extends Disposable implements WebClientLike {
 	protected get log() { return this._log; }
 
 	public invoke(
-		cancellationToken: CancellationToken,
+		cancellationToken: zxteam.CancellationToken,
 		{ url, method, headers, body }: WebClientInvokeArgs
-	): TaskLike<WebClientInvokeResult> {
-		super.verifyNotDisposed();
+	): zxteam.Task<WebClientInvokeResult> {
 		return Task.run(() => {
 			if (this.log.isTraceEnabled) { this.log.trace("begin invoke(...)", url, method, headers, body); }
 			return new Promise<WebClientInvokeResult>((resolve, reject) => {
@@ -217,10 +214,6 @@ export class WebClient extends Disposable implements WebClientLike {
 			});
 		});
 	}
-
-	public onDispose(): void {
-		// Nothing to do
-	}
 }
 
 const GlobalError = Error;
@@ -229,7 +222,7 @@ export namespace WebClient {
 		timeout?: number;
 		proxyOpts?: ProxyOpts;
 		sslOpts?: SslOpts;
-		log?: Logger;
+		log?: zxteam.Logger;
 	}
 
 	export type ProxyOpts = HttpProxyOpts | Socks5ProxyOpts;
