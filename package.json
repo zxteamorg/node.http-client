@@ -1,6 +1,6 @@
 {
 	"name": "@zxteam/webclient",
-	"version": "5.0.1",
+	"version": "5.0.2",
 	"description": "Web Client",
 	"author": {
 		"name": "ZXTeam",
@@ -21,11 +21,11 @@
 	"license": "MIT",
 	"dependencies": {
 		"@zxteam/contract": "^5.0.1",
-		"@zxteam/logger": "^5.0.0",
-		"@zxteam/task": "^5.0.0"
+		"@zxteam/logger": "^5.0.1",
+		"@zxteam/task": "^5.0.1"
 	},
 	"devDependencies": {
-		"@types/node": "^11.13.14",
+		"@types/node": "^11.13.15",
 		"@zxnode/build": "^0.0.34"
 	},
 	"engines": {

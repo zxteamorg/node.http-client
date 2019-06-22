@@ -2,10 +2,17 @@ const { name, version } = require(require("path").join(__dirname, "..", "package
 const G: any = global || window || {};
 const PACKAGE_GUARD: symbol = Symbol.for(name);
 if (PACKAGE_GUARD in G) {
-	throw new Error(`Conflict module version. Look like two different version loaded inside the process: ${G[PACKAGE_GUARD]} and ${version}`);
+	const conflictVersion = G[PACKAGE_GUARD];
+	// tslint:disable-next-line: max-line-length
+	const msg = `Conflict module version. Look like two different version of package ${name} was loaded inside the process: ${conflictVersion} and ${version}.`;
+	if (process !== undefined && process.env !== undefined && process.env.NODE_ALLOW_CONFLICT_MODULES === "1") {
+		console.warn(msg + " This treats as warning because NODE_ALLOW_CONFLICT_MODULES is set.");
+	} else {
+		throw new Error(msg + " Use NODE_ALLOW_CONFLICT_MODULES=\"1\" to treats this error as warning.");
+	}
+} else {
+	G[PACKAGE_GUARD] = version;
 }
-G[PACKAGE_GUARD] = version;
-
 
 import * as http from "http";
 import * as https from "https";
