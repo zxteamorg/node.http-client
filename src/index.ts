@@ -55,62 +55,146 @@ export class WebClient implements WebClientInvokeChannel {
 
 	protected get log() { return this._log; }
 
-	public invoke(
+	public async invoke(
 		cancellationToken: zxteam.CancellationToken,
 		{ url, method, headers, body }: WebClientInvokeArgs
-	): zxteam.Task<WebClientInvokeResult> {
-		return Task.run(() => {
-			if (this.log.isTraceEnabled) { this.log.trace("begin invoke(...)", url, method, headers, body); }
-			return new Promise<WebClientInvokeResult>((resolve, reject) => {
-				const responseHandler = (response: http.IncomingMessage) => {
-					const responseDataChunks: Array<Buffer> = [];
-					response.on("data", (chunk: Buffer) => responseDataChunks.push(chunk));
-					response.on("error", error => reject(error));
-					response.on("end", () => {
-						const respStatus = response.statusCode || 500;
-						const respDescription = response.statusMessage || "";
-						const respHeaders = response.headers;
-						const respBody = Buffer.concat(responseDataChunks);
+	): Promise<WebClientInvokeResult> {
+		if (this.log.isTraceEnabled) { this.log.trace("begin invoke(...)", url, method, headers, body); }
+		return new Promise<WebClientInvokeResult>((resolve, reject) => {
+			const responseHandler = (response: http.IncomingMessage) => {
+				const responseDataChunks: Array<Buffer> = [];
+				response.on("data", (chunk: Buffer) => responseDataChunks.push(chunk));
+				response.on("error", error => reject(error));
+				response.on("end", () => {
+					const respStatus = response.statusCode || 500;
+					const respDescription = response.statusMessage || "";
+					const respHeaders = response.headers;
+					const respBody = Buffer.concat(responseDataChunks);
 
-						if (respStatus < 400) {
-							return resolve({
-								statusCode: respStatus, statusMessage: respDescription,
-								headers: respHeaders, body: respBody
-							});
-						} else {
-							return reject(new WebClient.WebError(respStatus, respDescription, respHeaders, respBody));
-						}
-					});
-				};
-				if (cancellationToken !== undefined) { cancellationToken.throwIfCancellationRequested(); }
-				function registerCancelOperationIfNeeded(requestLike: { abort: () => void }) {
-					if (cancellationToken !== undefined) {
-						const cb = () => {
-							cancellationToken.removeCancelListener(cb);
-							requestLike.abort();
-							try {
-								cancellationToken.throwIfCancellationRequested(); // Shoud raise error
-								// Guard for broken implementation of cancellationToken
-								reject(new Error("Cancelled by user"));
-							} catch (e) {
-								reject(e);
-							}
-						};
-						cancellationToken.addCancelListener(cb);
+					if (respStatus < 400) {
+						return resolve({
+							statusCode: respStatus, statusMessage: respDescription,
+							headers: respHeaders, body: respBody
+						});
+					} else {
+						return reject(new WebClient.WebError(respStatus, respDescription, respHeaders, respBody));
 					}
-				}
+				});
+			};
 
-				let isConnecTimeout: boolean = false;
-				const proxyOpts = this._proxyOpts;
-				if (proxyOpts && proxyOpts.type === "http") {
-					const reqOpts = {
-						protocol: "http:",
-						host: proxyOpts.host,
-						port: proxyOpts.port,
-						path: url.href,
-						method,
-						headers: { Host: url.host, ...headers }
+			try {
+				cancellationToken.throwIfCancellationRequested(); // Shoud raise error
+			} catch (e) {
+				return reject(e);
+			}
+
+			function registerCancelOperationIfNeeded(requestLike: { abort: () => void }) {
+				if (cancellationToken !== undefined) {
+					const cb = () => {
+						cancellationToken.removeCancelListener(cb);
+						requestLike.abort();
+						try {
+							cancellationToken.throwIfCancellationRequested(); // Shoud raise error
+							// Guard for broken implementation of cancellationToken
+							reject(new Error("Cancelled by user"));
+						} catch (e) {
+							reject(e);
+						}
 					};
+					cancellationToken.addCancelListener(cb);
+				}
+			}
+
+			let isConnecTimeout: boolean = false;
+			const proxyOpts = this._proxyOpts;
+			if (proxyOpts && proxyOpts.type === "http") {
+				const reqOpts = {
+					protocol: "http:",
+					host: proxyOpts.host,
+					port: proxyOpts.port,
+					path: url.href,
+					method,
+					headers: { Host: url.host, ...headers }
+				};
+				if (this.log.isTraceEnabled) { this.log.trace("Call http.request", reqOpts); }
+				const request = http.request(reqOpts, responseHandler)
+					.on("error", error => {
+						const msg = isConnecTimeout ? "Connect Timeout" : "http.request failed. See innderError for details";
+						this.log.debug(msg, error);
+						reject(new WebClient.CommunicationError(msg, error));
+					});
+				if (this._requestTimeout !== null) {
+					request.setTimeout(this._requestTimeout, () => {
+						request.abort();
+						isConnecTimeout = true;
+					});
+					request.on("socket", socket => {
+						socket.setTimeout(this._requestTimeout);
+						socket.on("timeout", () => {
+							request.abort();
+							isConnecTimeout = true;
+						});
+					});
+				}
+				if (body) {
+					if (this.log.isTraceEnabled) { this.log.trace("write body", body.toString()); }
+					request.write(body);
+				}
+				request.end();
+				registerCancelOperationIfNeeded(request);
+			} else {
+				const reqOpts: https.RequestOptions = {
+					protocol: url.protocol,
+					host: url.hostname,
+					port: url.port,
+					path: url.pathname + url.search,
+					method: method,
+					headers: headers
+				};
+				if (reqOpts.protocol === "https:") {
+					const sslOpts = this._sslOpts;
+					if (sslOpts) {
+						if (sslOpts.ca) {
+							reqOpts.ca = sslOpts.ca;
+						}
+						if (sslOpts.rejectUnauthorized !== undefined) {
+							reqOpts.rejectUnauthorized = sslOpts.rejectUnauthorized;
+						}
+						if ("pfx" in sslOpts) {
+							reqOpts.pfx = sslOpts.pfx;
+							reqOpts.passphrase = sslOpts.passphrase;
+						} else if ("cert" in sslOpts) {
+							reqOpts.key = sslOpts.key;
+							reqOpts.cert = sslOpts.cert;
+						}
+					}
+					if (this.log.isTraceEnabled) { this.log.trace("Call https.request", reqOpts); }
+					const request = https.request(reqOpts, responseHandler)
+						.on("error", error => {
+							const msg = isConnecTimeout ? "Connect Timeout" : "http.request failed. See innderError for details";
+							this.log.debug(msg, error);
+							reject(new WebClient.CommunicationError(msg, error));
+						});
+					if (this._requestTimeout !== null) {
+						request.setTimeout(this._requestTimeout, () => {
+							request.abort();
+							isConnecTimeout = true;
+						});
+						request.on("socket", socket => {
+							socket.setTimeout(this._requestTimeout);
+							socket.on("timeout", () => {
+								request.abort();
+								isConnecTimeout = true;
+							});
+						});
+					}
+					if (body) {
+						if (this.log.isTraceEnabled) { this.log.trace("Write body", body.toString()); }
+						request.write(body);
+					}
+					request.end();
+					registerCancelOperationIfNeeded(request);
+				} else {
 					if (this.log.isTraceEnabled) { this.log.trace("Call http.request", reqOpts); }
 					const request = http.request(reqOpts, responseHandler)
 						.on("error", error => {
@@ -132,93 +216,13 @@ export class WebClient implements WebClientInvokeChannel {
 						});
 					}
 					if (body) {
-						if (this.log.isTraceEnabled) { this.log.trace("write body", body.toString()); }
+						if (this.log.isTraceEnabled) { this.log.trace("Write body", body.toString()); }
 						request.write(body);
 					}
 					request.end();
 					registerCancelOperationIfNeeded(request);
-				} else {
-					const reqOpts: https.RequestOptions = {
-						protocol: url.protocol,
-						host: url.hostname,
-						port: url.port,
-						path: url.pathname + url.search,
-						method: method,
-						headers: headers
-					};
-					if (reqOpts.protocol === "https:") {
-						const sslOpts = this._sslOpts;
-						if (sslOpts) {
-							if (sslOpts.ca) {
-								reqOpts.ca = sslOpts.ca;
-							}
-							if (sslOpts.rejectUnauthorized !== undefined) {
-								reqOpts.rejectUnauthorized = sslOpts.rejectUnauthorized;
-							}
-							if ("pfx" in sslOpts) {
-								reqOpts.pfx = sslOpts.pfx;
-								reqOpts.passphrase = sslOpts.passphrase;
-							} else if ("cert" in sslOpts) {
-								reqOpts.key = sslOpts.key;
-								reqOpts.cert = sslOpts.cert;
-							}
-						}
-						if (this.log.isTraceEnabled) { this.log.trace("Call https.request", reqOpts); }
-						const request = https.request(reqOpts, responseHandler)
-							.on("error", error => {
-								const msg = isConnecTimeout ? "Connect Timeout" : "http.request failed. See innderError for details";
-								this.log.debug(msg, error);
-								reject(new WebClient.CommunicationError(msg, error));
-							});
-						if (this._requestTimeout !== null) {
-							request.setTimeout(this._requestTimeout, () => {
-								request.abort();
-								isConnecTimeout = true;
-							});
-							request.on("socket", socket => {
-								socket.setTimeout(this._requestTimeout);
-								socket.on("timeout", () => {
-									request.abort();
-									isConnecTimeout = true;
-								});
-							});
-						}
-						if (body) {
-							if (this.log.isTraceEnabled) { this.log.trace("Write body", body.toString()); }
-							request.write(body);
-						}
-						request.end();
-						registerCancelOperationIfNeeded(request);
-					} else {
-						if (this.log.isTraceEnabled) { this.log.trace("Call http.request", reqOpts); }
-						const request = http.request(reqOpts, responseHandler)
-							.on("error", error => {
-								const msg = isConnecTimeout ? "Connect Timeout" : "http.request failed. See innderError for details";
-								this.log.debug(msg, error);
-								reject(new WebClient.CommunicationError(msg, error));
-							});
-						if (this._requestTimeout !== null) {
-							request.setTimeout(this._requestTimeout, () => {
-								request.abort();
-								isConnecTimeout = true;
-							});
-							request.on("socket", socket => {
-								socket.setTimeout(this._requestTimeout);
-								socket.on("timeout", () => {
-									request.abort();
-									isConnecTimeout = true;
-								});
-							});
-						}
-						if (body) {
-							if (this.log.isTraceEnabled) { this.log.trace("Write body", body.toString()); }
-							request.write(body);
-						}
-						request.end();
-						registerCancelOperationIfNeeded(request);
-					}
 				}
-			});
+			}
 		});
 	}
 }

@@ -42,7 +42,6 @@ describe("WebClient tests", function () {
 				method: "GET",
 				headers: { test: "test" }
 			})
-				.promise
 				.then(() => { thenCalled = true; })
 				.catch((reason) => { expectedError = reason; });
 
@@ -68,7 +67,7 @@ describe("WebClient tests", function () {
 			await listeningDefer.promise;
 			try {
 				const httpClient = new WebClient({ timeout: 500 });
-				const response = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" }).promise;
+				const response = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" });
 
 				assert.isDefined(response);
 				assert.equal(response.statusCode, 301);
