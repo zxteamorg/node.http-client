@@ -14,39 +14,23 @@ if (PACKAGE_GUARD in G) {
 	G[PACKAGE_GUARD] = version;
 }
 
+import * as zxteam from "@zxteam/contract";
+
 import * as http from "http";
 import * as https from "https";
 import { URL } from "url";
 
-import * as zxteam from "@zxteam/contract";
-import { loggerManager } from "@zxteam/logger";
-import { Task } from "@zxteam/task";
 
-export interface WebClientInvokeArgs {
-	url: URL;
-	method: "CONNECT" | "DELETE" | "HEAD" | "GET" | "OPTIONS" | "PATCH" | "POST" | "PUT" | "TRACE" | string;
-	headers?: http.OutgoingHttpHeaders;
-	body?: Buffer;
-}
-export interface WebClientInvokeResult {
-	statusCode: number;
-	statusMessage: string;
-	headers: http.IncomingHttpHeaders;
-	body: Buffer;
-}
-
-export type WebClientInvokeChannel = zxteam.InvokeChannel<WebClientInvokeArgs, WebClientInvokeResult>;
-
-export class WebClient implements WebClientInvokeChannel {
-	private readonly _proxyOpts: WebClient.ProxyOpts | null;
-	private readonly _sslOpts: WebClient.SslOpts | null;
-	private _log: zxteam.Logger;
-	private _requestTimeout: number | null;
-	public constructor(opts?: WebClient.Opts) {
+export class HttpClient implements HttpClient.InvokeChannel {
+	private readonly _proxyOpts: HttpClient.ProxyOpts | null;
+	private readonly _sslOpts: HttpClient.SslOpts | null;
+	private readonly _log: zxteam.Logger;
+	private readonly _requestTimeout: number | null;
+	public constructor(opts?: HttpClient.Opts) {
 		if (opts !== undefined && opts.log !== undefined) {
 			this._log = opts.log;
 		} else {
-			this._log = loggerManager.getLogger(this.constructor.name);
+			this._log = DUMMY_LOGGER;
 		}
 		this._proxyOpts = opts && opts.proxyOpts || null;
 		this._sslOpts = opts && opts.sslOpts || null;
@@ -57,10 +41,10 @@ export class WebClient implements WebClientInvokeChannel {
 
 	public async invoke(
 		cancellationToken: zxteam.CancellationToken,
-		{ url, method, headers, body }: WebClientInvokeArgs
-	): Promise<WebClientInvokeResult> {
+		{ url, method, headers, body }: HttpClient.Request
+	): Promise<HttpClient.Response> {
 		if (this.log.isTraceEnabled) { this.log.trace("begin invoke(...)", url, method, headers, body); }
-		return new Promise<WebClientInvokeResult>((resolve, reject) => {
+		return new Promise<HttpClient.Response>((resolve, reject) => {
 			const responseHandler = (response: http.IncomingMessage) => {
 				const responseDataChunks: Array<Buffer> = [];
 				response.on("data", (chunk: Buffer) => responseDataChunks.push(chunk));
@@ -77,7 +61,7 @@ export class WebClient implements WebClientInvokeChannel {
 							headers: respHeaders, body: respBody
 						});
 					} else {
-						return reject(new WebClient.WebError(respStatus, respDescription, respHeaders, respBody));
+						return reject(new HttpClient.WebError(respStatus, respDescription, respHeaders, respBody));
 					}
 				});
 			};
@@ -121,7 +105,7 @@ export class WebClient implements WebClientInvokeChannel {
 					.on("error", error => {
 						const msg = isConnecTimeout ? "Connect Timeout" : "http.request failed. See innderError for details";
 						this.log.debug(msg, error);
-						reject(new WebClient.CommunicationError(msg, error));
+						reject(new HttpClient.CommunicationError(msg, error));
 					});
 				if (this._requestTimeout !== null) {
 					request.setTimeout(this._requestTimeout, () => {
@@ -173,7 +157,7 @@ export class WebClient implements WebClientInvokeChannel {
 						.on("error", error => {
 							const msg = isConnecTimeout ? "Connect Timeout" : "http.request failed. See innderError for details";
 							this.log.debug(msg, error);
-							reject(new WebClient.CommunicationError(msg, error));
+							reject(new HttpClient.CommunicationError(msg, error));
 						});
 					if (this._requestTimeout !== null) {
 						request.setTimeout(this._requestTimeout, () => {
@@ -200,7 +184,7 @@ export class WebClient implements WebClientInvokeChannel {
 						.on("error", error => {
 							const msg = isConnecTimeout ? "Connect Timeout" : "http.request failed. See innderError for details";
 							this.log.debug(msg, error);
-							reject(new WebClient.CommunicationError(msg, error));
+							reject(new HttpClient.CommunicationError(msg, error));
 						});
 					if (this._requestTimeout !== null) {
 						request.setTimeout(this._requestTimeout, () => {
@@ -227,8 +211,7 @@ export class WebClient implements WebClientInvokeChannel {
 	}
 }
 
-const GlobalError = Error;
-export namespace WebClient {
+export namespace HttpClient {
 	export interface Opts {
 		timeout?: number;
 		proxyOpts?: ProxyOpts;
@@ -251,7 +234,7 @@ export namespace WebClient {
 	export type SslOpts = SslOptsBase | SslCertOpts | SslPfxOpts;
 
 	export interface SslOptsBase {
-		ca?: Buffer;
+		ca?: Buffer | Array<Buffer>;
 		rejectUnauthorized?: boolean;
 	}
 
@@ -265,15 +248,42 @@ export namespace WebClient {
 		passphrase: string;
 	}
 
+	export const enum HttpMethod {
+		CONNECT = "CONNECT",
+		DELETE = "DELETE",
+		HEAD = "HEAD",
+		GET = "GET",
+		OPTIONS = "OPTIONS",
+		PATCH = "PATCH",
+		POST = "POST",
+		PUT = "PUT",
+		TRACE = "TRACE"
+	}
+
+	export interface Request {
+		readonly url: URL;
+		readonly method: HttpMethod | string;
+		readonly headers?: http.OutgoingHttpHeaders;
+		readonly body?: Buffer;
+	}
+	export interface Response {
+		readonly statusCode: number;
+		readonly statusMessage: string;
+		readonly headers: http.IncomingHttpHeaders;
+		readonly body: Buffer;
+	}
+
+	export type InvokeChannel = zxteam.InvokeChannel<Request, Response>;
+
 	/** Base error type for WebClient */
-	export class Error extends GlobalError {
+	export abstract class HttpClientError extends Error {
 	}
 
 	/**
 	 * WebError is a wrapper of HTTP responses with code 4xx/5xx
 	 */
-	export class WebError extends Error {
-		public readonly name = "WebClient.WebError";
+	export class WebError extends HttpClientError {
+		public readonly name = "HttpClient.WebError";
 		private readonly _statusCode: number;
 		private readonly _statusDescription: string;
 		private readonly _headers: http.IncomingHttpHeaders;
@@ -297,8 +307,8 @@ export namespace WebClient {
 	 * CommunicationError is a wrapper over underlaying network errors.
 	 * Such a DNS lookup issues, TCP connection issues, etc...
 	 */
-	export class CommunicationError extends Error {
-		public readonly name = "WebClient.CommunicationError";
+	export class CommunicationError extends HttpClientError {
+		public readonly name = "HttpClient.CommunicationError";
 		private readonly _innerError?: Error;
 
 		public constructor(message: string, innerError?: Error) {
@@ -310,4 +320,20 @@ export namespace WebClient {
 	}
 }
 
-export default WebClient;
+export default HttpClient;
+
+const DUMMY_LOGGER: zxteam.Logger = Object.freeze({
+	get isTraceEnabled(): boolean { return false; },
+	get isDebugEnabled(): boolean { return false; },
+	get isInfoEnabled(): boolean { return false; },
+	get isWarnEnabled(): boolean { return false; },
+	get isErrorEnabled(): boolean { return false; },
+	get isFatalEnabled(): boolean { return false; },
+
+	trace(message: string, ...args: any[]): void { /* NOP */ },
+	debug(message: string, ...args: any[]): void { /* NOP */ },
+	info(message: string, ...args: any[]): void { /* NOP */ },
+	warn(message: string, ...args: any[]): void { /* NOP */ },
+	error(message: string, ...args: any[]): void { /* NOP */ },
+	fatal(message: string, ...args: any[]): void { /* NOP */ }
+});

@@ -1,17 +1,17 @@
 {
-	"name": "@zxteam/webclient",
-	"version": "6.0.1",
-	"description": "Web Client",
+	"name": "@zxteam/http-client",
+	"version": "6.0.4",
+	"description": "HTTP(S) Client",
 	"author": {
 		"name": "ZXTeam",
 		"email": "pub@project.zxteam.org",
-		"url": "http://www.zxteam.org"
+		"url": "https://www.zxteam.org"
 	},
 	"contributors": [
 		{
 			"name": "Maxim Anurin",
 			"email": "maxim.anurin@zxteam.org",
-			"url": "http://www.anurin.name"
+			"url": "https://www.anurin.name"
 		},
 		{
 			"name": "Serhii Zghama",
@@ -20,13 +20,12 @@
 	],
 	"license": "MIT",
 	"dependencies": {
-		"@zxteam/contract": "^6.0.1",
-		"@zxteam/logger": "^6.0.1",
-		"@zxteam/task": "^6.0.1"
+		"@zxteam/contract": "^6.0.4"
 	},
 	"devDependencies": {
 		"@types/node": "^11.13.17",
-		"@zxnode/build": "^0.0.34"
+		"@zxnode/build": "^0.0.34",
+		"@zxteam/task": "^6.0.1"
 	},
 	"engines": {
 		"node": ">=11"
@@ -34,15 +33,16 @@
 	"keywords": [],
 	"repository": {
 		"type": "git",
-		"url": "ssh://git@dev.zxteam.net:22282/pub/node/webclient.git"
+		"url": "https://github.com/zxteamorg/node.http-client.git"
 	},
 	"bugs": {
-		"url": "https://dev.zxteam.net/pub/node/webclient/issues"
+		"url": "https://github.com/zxteamorg/node.http-client/issues"
 	},
-	"homepage": "https://dev.zxteam.net/pub/node/webclient",
+	"homepage": "https://github.com/zxteamorg/node.http-client",
 	"scripts": {
 		"build": "zxbuild clean dist",
-		"test": "nyc --exclude submodules --exclude test --reporter=lcov --reporter=text --reporter=text-summary mocha \"test/**/*.test.js\" --recursive --timeout 10000"
+		"test": "nyc --exclude submodules --exclude test --extension=\".ts\" --reporter=lcov --reporter=text --reporter=text-summary mocha \"test/**/*.test.js\" --recursive --timeout 10000",
+		"test:only": "mocha --require source-map-support/register \"test/**/*.test.js\" --recursive --timeout 10000"
 	},
 	"private": true
 }

@@ -1,10 +1,13 @@
-import { assert } from "chai";
-import { URL } from "url";
+import * as zxteam from "@zxteam/contract";
 import { Task, CancelledError, DUMMY_CANCELLATION_TOKEN } from "@zxteam/task";
 
-import WebClient from "../src/index";
+import { assert } from "chai";
+import { URL } from "url";
+
 import { Socket, Server } from "net";
 import * as http from "http";
+
+import HttpClient from "../src/index";
 
 function nextTick() {
 	return new Promise(resolve => process.nextTick(resolve));
@@ -13,7 +16,7 @@ function nextTick() {
 describe("WebClient tests", function () {
 	describe("Tests without proxy", function () {
 		it("WebClient should GET http:", async function () {
-			const httpClient = new WebClient();
+			const httpClient = new HttpClient();
 			await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
 				url: new URL("?a", "http://www.google.com"),
 				method: "GET",
@@ -22,7 +25,7 @@ describe("WebClient tests", function () {
 		});
 
 		it("WebClient should GET https:", async function () {
-			const httpClient = new WebClient();
+			const httpClient = new HttpClient();
 			await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
 				url: new URL("?a", "http://www.google.com"),
 				method: "GET",
@@ -36,7 +39,7 @@ describe("WebClient tests", function () {
 			let expectedError;
 			let thenCalled = false;
 
-			const httpClient = new WebClient();
+			const httpClient = new HttpClient();
 			httpClient.invoke(cts.token, {
 				url: new URL("?a", "http://www.google.com"),
 				method: "GET",
@@ -66,7 +69,7 @@ describe("WebClient tests", function () {
 			});
 			await listeningDefer.promise;
 			try {
-				const httpClient = new WebClient({ timeout: 500 });
+				const httpClient = new HttpClient({ timeout: 500 });
 				const response = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" });
 
 				assert.isDefined(response);
@@ -96,7 +99,7 @@ describe("WebClient tests", function () {
 
 
 			it("Should handle Socket Refused as CommunicationError", async function () {
-				const httpClient = new WebClient();
+				const httpClient = new HttpClient();
 				let expectedError;
 				try {
 					await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://localhost:1"), method: "GET" });
@@ -104,12 +107,12 @@ describe("WebClient tests", function () {
 					expectedError = e;
 				}
 				assert.isDefined(expectedError);
-				assert.instanceOf(expectedError, WebClient.CommunicationError);
+				assert.instanceOf(expectedError, HttpClient.CommunicationError);
 				assert.instanceOf(expectedError.innerError, Error);
 				assert.include(expectedError.innerError.message, "ECONNREFUSED");
 			});
 			it("Should handle DNS Resolve problem as CommunicationError", async function () {
-				const httpClient = new WebClient();
+				const httpClient = new HttpClient();
 				let expectedError;
 				try {
 					await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://not.exsting.domain.no"), method: "GET" });
@@ -117,12 +120,12 @@ describe("WebClient tests", function () {
 					expectedError = e;
 				}
 				assert.isDefined(expectedError);
-				assert.instanceOf(expectedError, WebClient.CommunicationError);
+				assert.instanceOf(expectedError, HttpClient.CommunicationError);
 				assert.instanceOf(expectedError.innerError, Error);
 				assert.include(expectedError.innerError.message, "ENOTFOUND");
 			});
 			it("Should handle Connection Timeout (before connect) as CommunicationError", async function () {
-				const httpClient = new WebClient({ timeout: 50 });
+				const httpClient = new HttpClient({ timeout: 50 });
 				let expectedError;
 				try {
 					// Connecting to NON existng IP to emulate connect timeout
@@ -131,7 +134,7 @@ describe("WebClient tests", function () {
 					expectedError = e;
 				}
 				assert.isDefined(expectedError);
-				assert.instanceOf(expectedError, WebClient.CommunicationError);
+				assert.instanceOf(expectedError, HttpClient.CommunicationError);
 				assert.instanceOf(expectedError.innerError, Error);
 				assert.include(expectedError.innerError.message, "socket hang up");
 			});
@@ -149,7 +152,7 @@ describe("WebClient tests", function () {
 				});
 				await listeningDefer.promise;
 				try {
-					const httpClient = new WebClient({ timeout: 50 });
+					const httpClient = new HttpClient({ timeout: 50 });
 					let expectedError;
 					try {
 						await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" });
@@ -157,7 +160,7 @@ describe("WebClient tests", function () {
 						expectedError = e;
 					}
 					assert.isDefined(expectedError);
-					assert.instanceOf(expectedError, WebClient.CommunicationError);
+					assert.instanceOf(expectedError, HttpClient.CommunicationError);
 					assert.instanceOf(expectedError.innerError, Error);
 					assert.include(expectedError.innerError.message, "socket hang up");
 				} finally {
@@ -180,7 +183,7 @@ describe("WebClient tests", function () {
 				});
 				await listeningDefer.promise;
 				try {
-					const httpClient = new WebClient({ timeout: 1000 });
+					const httpClient = new HttpClient({ timeout: 1000 });
 					let expectedError;
 					try {
 						await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" });
@@ -188,7 +191,7 @@ describe("WebClient tests", function () {
 						expectedError = e;
 					}
 					assert.isDefined(expectedError);
-					assert.instanceOf(expectedError, WebClient.CommunicationError);
+					assert.instanceOf(expectedError, HttpClient.CommunicationError);
 					assert.instanceOf(expectedError.innerError, Error);
 					assert.include(expectedError.innerError.code, "ECONNRESET");
 				} finally {
@@ -210,7 +213,7 @@ describe("WebClient tests", function () {
 				});
 				await listeningDefer.promise;
 				try {
-					const httpClient = new WebClient({ timeout: 500 });
+					const httpClient = new HttpClient({ timeout: 500 });
 					let expectedError;
 					try {
 						await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" });
@@ -218,7 +221,7 @@ describe("WebClient tests", function () {
 						expectedError = e;
 					}
 					assert.isDefined(expectedError);
-					assert.instanceOf(expectedError, WebClient.WebError);
+					assert.instanceOf(expectedError, HttpClient.WebError);
 					assert.instanceOf(expectedError.body, Buffer);
 					assert.equal(expectedError.body.toString(), "Fake data");
 				} finally {
@@ -232,13 +235,13 @@ describe("WebClient tests", function () {
 	});
 
 	describe.skip("Tests with proxy", function () {
-		const proxyOpts: WebClient.ProxyOpts = {
+		const proxyOpts: HttpClient.ProxyOpts = {
 			type: "http",
 			host: "localhost",
 			port: 3128
 		};
 		it("WebClient should GET http: with proxy", async function () {
-			const httpClient = new WebClient({ proxyOpts });
+			const httpClient = new HttpClient({ proxyOpts });
 			const res = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
 				method: "GET",
 				url: new URL("http://www.google.com?a"),
@@ -247,7 +250,7 @@ describe("WebClient tests", function () {
 		});
 
 		it("WebClient should GET https: with proxy", async function () {
-			const httpClient = new WebClient({ proxyOpts });
+			const httpClient = new HttpClient({ proxyOpts });
 			const res = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
 				method: "GET",
 				url: new URL("http://www.google.com?a"),
@@ -256,7 +259,7 @@ describe("WebClient tests", function () {
 		});
 
 		it("WebClient should GET data from Poloniex: with proxy", async function () {
-			const httpClient = new WebClient({ proxyOpts });
+			const httpClient = new HttpClient({ proxyOpts });
 			const res = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
 				method: "GET",
 				url: new URL("https://poloniex.com/public?command=returnTicker")
