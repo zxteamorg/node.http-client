@@ -7,20 +7,28 @@
 
 The package implements Http Client (wraps [Node.js](https://nodejs.org/) [http](https://nodejs.org/api/http.html)/[htts](https://nodejs.org/api/https.html) client request) as [InvokeChannel](https://github.com/zxteamorg/node.contract#invokechannel). Main idea of the wrapper is use single and more friendly Http Client in each of our project.
 
-### Usage (TypeScript)
+### Examples (TypeScript)
+#### [Simple HTTP request: test/examples/typescript/example001.ts](test/examples/typescript/example001.ts)
 ```typescript
 const cancellationToken: zxteam.CancellationToken = ...;
 
 const httpClient = new HttpClient();
 
 const request: HttpClient.Request = {
-	url: new URL("http://www.google.com"),
+	url: new URL("http://httpbin.org/ip"),
 	method: "GET",
 	headers: { "Accept": "*/*" }
 };
 
 const response: HttpClient.Response = await httpClient.invoke(cancellationToken, request);
 
+const statusCode: number = response.statusCode;
+const statusMessage: string = response.statusMessage;
+const headers: http.IncomingHttpHeaders = response.headers;
 const body: Buffer = response.body;
+
+console.log(statusCode);
+console.log(statusMessage);
+console.log(headers);
 console.log(body.toString());
 ```

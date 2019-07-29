@@ -44,5 +44,7 @@
 		"test": "nyc --exclude submodules --exclude test --extension=\".ts\" --reporter=lcov --reporter=text --reporter=text-summary mocha \"test/**/*.test.js\" --recursive --timeout 10000",
 		"test:only": "mocha --require source-map-support/register \"test/**/*.test.js\" --recursive --timeout 10000"
 	},
+	"main": "./src/index.js",
+	"types": "./src/index.d.ts",
 	"private": true
 }
