@@ -25,7 +25,8 @@
 	"devDependencies": {
 		"@types/node": "^11.13.18",
 		"@zxnode/build": "^0.0.34",
-		"@zxteam/task": "^6.0.18"
+		"@zxteam/cancellation": "^6.0.18",
+		"@zxteam/errors": "^6.0.18"
 	},
 	"engines": {
 		"node": ">=11"
@@ -41,8 +42,8 @@
 	"homepage": "https://github.com/zxteamorg/node.http-client",
 	"scripts": {
 		"build": "zxbuild clean dist && cp README.md .dist/",
-		"test": "nyc --exclude submodules --exclude test --extension=\".ts\" --reporter=lcov --reporter=text --reporter=text-summary mocha \"test/**/*.test.js\" --recursive --timeout 10000",
-		"test:only": "mocha --require source-map-support/register \"test/**/*.test.js\" --recursive --timeout 10000"
+		"test": "nyc --exclude submodules --exclude test --extension=\".ts\" --reporter=lcov --reporter=text --reporter=text-summary mocha \"test/**/*.test.js\" --recursive --timeout 90000",
+		"test:only": "mocha --require source-map-support/register \"test/**/*.test.js\" --recursive --timeout 90000"
 	},
 	"main": "./src/index.js",
 	"types": "./src/index.d.ts",

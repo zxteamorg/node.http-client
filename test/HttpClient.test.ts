@@ -1,5 +1,6 @@
 import * as zxteam from "@zxteam/contract";
-import { Task, CancelledError, DUMMY_CANCELLATION_TOKEN } from "@zxteam/task";
+import { CancelledError } from "@zxteam/errors";
+import { DUMMY_CANCELLATION_TOKEN, SimpleCancellationTokenSource } from "@zxteam/cancellation";
 
 import { assert } from "chai";
 import { URL } from "url";
@@ -13,33 +14,35 @@ function nextTick() {
 	return new Promise(resolve => process.nextTick(resolve));
 }
 
-describe("WebClient tests", function () {
+describe("HttpClient tests", function () {
 	describe("Tests without proxy", function () {
-		it("WebClient should GET http:", async function () {
-			const httpClient = new HttpClient();
+		it("HttpClient should GET http:", async function () {
+			const httpClient = new HttpClient({ timeout: 5000 });
 			await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
 				url: new URL("?a", "http://www.google.com"),
+//				url: new URL("?a", "http://echo.org"),
 				method: "GET",
 				headers: { test: "test" }
 			});
 		});
 
-		it("WebClient should GET https:", async function () {
-			const httpClient = new HttpClient();
+		it("HttpClient should GET https:", async function () {
+			const httpClient = new HttpClient({ timeout: 5000 });
 			await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
-				url: new URL("?a", "http://www.google.com"),
+				//url: new URL("?a", "https://www.google.com"),
+				url: new URL("?a", "https://echo.org"),
 				method: "GET",
 				headers: { test: "test" }
 			});
 		});
 
-		it("WebClient should cancel() invoke", async function () {
-			const cts = Task.createCancellationTokenSource();
+		it("HttpClient should cancel() invoke", async function () {
+			const cts = new SimpleCancellationTokenSource();
 
 			let expectedError;
 			let thenCalled = false;
 
-			const httpClient = new HttpClient();
+			const httpClient = new HttpClient({ timeout: 5000 });
 			httpClient.invoke(cts.token, {
 				url: new URL("?a", "http://www.google.com"),
 				method: "GET",
@@ -240,7 +243,7 @@ describe("WebClient tests", function () {
 			host: "localhost",
 			port: 3128
 		};
-		it("WebClient should GET http: with proxy", async function () {
+		it("HttpClient should GET http: with proxy", async function () {
 			const httpClient = new HttpClient({ proxyOpts });
 			const res = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
 				method: "GET",
@@ -249,7 +252,7 @@ describe("WebClient tests", function () {
 			});
 		});
 
-		it("WebClient should GET https: with proxy", async function () {
+		it("HttpClient should GET https: with proxy", async function () {
 			const httpClient = new HttpClient({ proxyOpts });
 			const res = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
 				method: "GET",
@@ -258,7 +261,7 @@ describe("WebClient tests", function () {
 			});
 		});
 
-		it("WebClient should GET data from Poloniex: with proxy", async function () {
+		it("HttpClient should GET data from Poloniex: with proxy", async function () {
 			const httpClient = new HttpClient({ proxyOpts });
 			const res = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
 				method: "GET",
