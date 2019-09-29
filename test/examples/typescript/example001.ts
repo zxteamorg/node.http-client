@@ -23,7 +23,7 @@ async function main() {
 	const response: HttpClient.Response = await httpClient.invoke(cancellationToken, request);
 
 	const statusCode: number = response.statusCode;
-	const statusMessage: string = response.statusMessage;
+	const statusMessage: string = response.statusDescription;
 	const headers: http.IncomingHttpHeaders = response.headers;
 	const body: Buffer = response.body;
 

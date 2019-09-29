@@ -19,8 +19,8 @@ describe("HttpClient tests", function () {
 		it("HttpClient should GET http:", async function () {
 			const httpClient = new HttpClient({ timeout: 5000 });
 			await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
-				url: new URL("?a", "http://www.google.com"),
-//				url: new URL("?a", "http://echo.org"),
+//				url: new URL("?a", "http://www.google.com"),
+				url: new URL("?a", "http://echo.org"),
 				method: "GET",
 				headers: { test: "test" }
 			});
@@ -77,7 +77,7 @@ describe("HttpClient tests", function () {
 
 				assert.isDefined(response);
 				assert.equal(response.statusCode, 301);
-				assert.equal(response.statusMessage, "Fake moved");
+				assert.equal(response.statusDescription, "Fake moved");
 				assert.equal((response.body as Buffer).toString(), "Fake data");
 			} finally {
 				const closeDefer: any = {};

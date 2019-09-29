@@ -1,4 +1,4 @@
-const { name: packageName, version: packageVersion } = require(require("path").join(__dirname, "..", "package.json"));
+const { name: packageName, version: packageVersion } = require("../package.json");
 const G: any = global || window || {};
 const PACKAGE_GUARD: symbol = Symbol.for(packageName);
 if (PACKAGE_GUARD in G) {
@@ -14,17 +14,17 @@ if (PACKAGE_GUARD in G) {
 	G[PACKAGE_GUARD] = packageVersion;
 }
 
-import * as zxteam from "@zxteam/contract";
+import { CancellationToken, Logger, InvokeChannel } from "@zxteam/contract";
 
 import * as http from "http";
 import * as https from "https";
 import { URL } from "url";
 
 
-export class HttpClient implements HttpClient.InvokeChannel {
+export class HttpClient implements HttpClient.HttpInvokeChannel {
 	private readonly _proxyOpts: HttpClient.ProxyOpts | null;
 	private readonly _sslOpts: HttpClient.SslOpts | null;
-	private readonly _log: zxteam.Logger;
+	private readonly _log: Logger;
 	private readonly _requestTimeout: number;
 	public constructor(opts?: HttpClient.Opts) {
 		if (opts !== undefined && opts.log !== undefined) {
@@ -40,7 +40,7 @@ export class HttpClient implements HttpClient.InvokeChannel {
 	protected get log() { return this._log; }
 
 	public async invoke(
-		cancellationToken: zxteam.CancellationToken,
+		cancellationToken: CancellationToken,
 		{ url, method, headers, body }: HttpClient.Request
 	): Promise<HttpClient.Response> {
 		if (this.log.isTraceEnabled) { this.log.trace("begin invoke(...)", url, method, headers, body); }
@@ -76,7 +76,7 @@ export class HttpClient implements HttpClient.InvokeChannel {
 
 						if (respStatus < 400) {
 							return resolve({
-								statusCode: respStatus, statusMessage: respDescription,
+								statusCode: respStatus, statusDescription: respDescription,
 								headers: respHeaders, body: respBody
 							});
 						} else {
@@ -190,7 +190,7 @@ export namespace HttpClient {
 		timeout?: number;
 		proxyOpts?: ProxyOpts;
 		sslOpts?: SslOpts;
-		log?: zxteam.Logger;
+		log?: Logger;
 	}
 
 	export type ProxyOpts = HttpProxyOpts | Socks5ProxyOpts;
@@ -242,12 +242,12 @@ export namespace HttpClient {
 	}
 	export interface Response {
 		readonly statusCode: number;
-		readonly statusMessage: string;
+		readonly statusDescription: string;
 		readonly headers: http.IncomingHttpHeaders;
 		readonly body: Buffer;
 	}
 
-	export type InvokeChannel = zxteam.InvokeChannel<Request, Response>;
+	export type HttpInvokeChannel = InvokeChannel<Request, Response>;
 
 	/** Base error type for WebClient */
 	export abstract class HttpClientError extends Error {
@@ -256,7 +256,7 @@ export namespace HttpClient {
 	/**
 	 * WebError is a wrapper of HTTP responses with code 4xx/5xx
 	 */
-	export class WebError extends HttpClientError {
+	export class WebError extends HttpClientError implements Response {
 		public readonly name = "HttpClient.WebError";
 		private readonly _statusCode: number;
 		private readonly _statusDescription: string;
@@ -296,7 +296,7 @@ export namespace HttpClient {
 
 export default HttpClient;
 
-const DUMMY_LOGGER: zxteam.Logger = Object.freeze({
+const DUMMY_LOGGER: Logger = Object.freeze({
 	get isTraceEnabled(): boolean { return false; },
 	get isDebugEnabled(): boolean { return false; },
 	get isInfoEnabled(): boolean { return false; },
@@ -311,5 +311,5 @@ const DUMMY_LOGGER: zxteam.Logger = Object.freeze({
 	error(message: string, ...args: any[]): void { /* NOP */ },
 	fatal(message: string, ...args: any[]): void { /* NOP */ },
 
-	getLogger(name?: string): zxteam.Logger { /* NOP */ return this; }
+	getLogger(name?: string): Logger { /* NOP */ return this; }
 });
