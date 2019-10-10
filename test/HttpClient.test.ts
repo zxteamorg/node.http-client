@@ -1,6 +1,6 @@
 import * as zxteam from "@zxteam/contract";
 import { CancelledError } from "@zxteam/errors";
-import { DUMMY_CANCELLATION_TOKEN, SimpleCancellationTokenSource } from "@zxteam/cancellation";
+import { DUMMY_CANCELLATION_TOKEN, ManualCancellationTokenSource } from "@zxteam/cancellation";
 
 import { assert } from "chai";
 import { URL } from "url";
@@ -37,7 +37,7 @@ describe("HttpClient tests", function () {
 		});
 
 		it("HttpClient should cancel() invoke", async function () {
-			const cts = new SimpleCancellationTokenSource();
+			const cts = new ManualCancellationTokenSource();
 
 			let expectedError;
 			let thenCalled = false;
