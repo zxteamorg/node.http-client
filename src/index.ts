@@ -15,11 +15,10 @@ if (PACKAGE_GUARD in G) {
 }
 
 import { CancellationToken, Logger, InvokeChannel } from "@zxteam/contract";
+import { InnerError } from "@zxteam/errors";
 
 import * as http from "http";
 import * as https from "https";
-import { URL } from "url";
-
 
 export class HttpClient implements HttpClient.HttpInvokeChannel {
 	private readonly _proxyOpts: HttpClient.ProxyOpts | null;
@@ -250,14 +249,13 @@ export namespace HttpClient {
 	export type HttpInvokeChannel = InvokeChannel<Request, Response>;
 
 	/** Base error type for WebClient */
-	export abstract class HttpClientError extends Error {
+	export abstract class HttpClientError extends InnerError {
 	}
 
 	/**
 	 * WebError is a wrapper of HTTP responses with code 4xx/5xx
 	 */
 	export class WebError extends HttpClientError implements Response {
-		public readonly name = "HttpClient.WebError";
 		private readonly _statusCode: number;
 		private readonly _statusDescription: string;
 		private readonly _headers: http.IncomingHttpHeaders;
@@ -282,15 +280,9 @@ export namespace HttpClient {
 	 * Such a DNS lookup issues, TCP connection issues, etc...
 	 */
 	export class CommunicationError extends HttpClientError {
-		public readonly name = "HttpClient.CommunicationError";
-		private readonly _innerError?: Error;
-
 		public constructor(message: string, innerError?: Error) {
-			super(message);
-			this._innerError = innerError;
+			super(message, innerError);
 		}
-
-		public get innerError(): Error | undefined { return this._innerError; }
 	}
 }
 

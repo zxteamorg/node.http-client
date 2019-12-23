@@ -1,15 +1,7 @@
-import * as zxteam from "@zxteam/contract";
-// import { HttpClient } from  "@zxteam/http-client";
-import { HttpClient } from "../../..";
+import { DUMMY_CANCELLATION_TOKEN } from "@zxteam/cancellation";
+import { HttpClient } from "../../../src/index";
 
 import * as http from "http";
-
-const cancellationToken: zxteam.CancellationToken = {
-	isCancellationRequested: false,
-	addCancelListener(cb: Function): void { /* dummy */ },
-	removeCancelListener(cb: Function): void { /* dummy */ },
-	throwIfCancellationRequested(): void { /* dummy */ }
-};
 
 async function main() {
 	const httpClient = new HttpClient();
@@ -20,7 +12,7 @@ async function main() {
 		headers: { "Accept": "*/*" }
 	};
 
-	const response: HttpClient.Response = await httpClient.invoke(cancellationToken, request);
+	const response: HttpClient.Response = await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, request);
 
 	const statusCode: number = response.statusCode;
 	const statusMessage: string = response.statusDescription;
