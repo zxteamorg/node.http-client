@@ -1,6 +1,6 @@
 {
 	"name": "@zxteam/http-client",
-	"version": "6.0.40",
+	"version": "6.0.62",
 	"description": "HTTP(S) Client",
 	"author": {
 		"name": "ZXTeam",
@@ -20,11 +20,11 @@
 	],
 	"license": "MIT",
 	"dependencies": {
-		"@zxteam/contract": "^6.0.40",
-		"@zxteam/errors": "^6.0.40"
+		"@zxteam/contract": "^6.0.62",
+		"@zxteam/errors": "^6.0.61"
 	},
 	"devDependencies": {
-		"@types/node": "^11.15.3",
+		"@types/node": "^11.15.16",
 		"@zxnode/build": "^0.0.34",
 		"@zxteam/cancellation": "^6.0.40"
 	},

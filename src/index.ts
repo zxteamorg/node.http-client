@@ -15,7 +15,7 @@ if (PACKAGE_GUARD in G) {
 }
 
 import { CancellationToken, Logger, InvokeChannel } from "@zxteam/contract";
-import { InnerError } from "@zxteam/errors";
+import { InnerError, CancelledError } from "@zxteam/errors";
 
 import * as http from "http";
 import * as https from "https";
@@ -68,10 +68,15 @@ export class HttpClient implements HttpClient.HttpInvokeChannel {
 							return reject(new HttpClient.CommunicationError("Connect Timeout"));
 						}
 
-						const respStatus = response.statusCode || 500;
-						const respDescription = response.statusMessage || "";
+						const respStatus: number = response.statusCode || 500;
+						const respDescription: string = response.statusMessage || "";
 						const respHeaders = response.headers;
-						const respBody = Buffer.concat(responseDataChunks);
+						const respBody: Buffer = Buffer.concat(responseDataChunks);
+
+						if (this.log.isTraceEnabled) {
+							this.log.trace(`Recv: ${JSON.stringify({ respStatus, respDescription, respHeaders })}`);
+							this.log.trace(`Recv body: ${respBody.toString()}`);
+						}
 
 						if (respStatus < 400) {
 							return resolve({
@@ -119,7 +124,7 @@ export class HttpClient implements HttpClient.HttpInvokeChannel {
 						try {
 							cancellationToken.throwIfCancellationRequested(); // Should raise error
 							// Guard for broken implementation of cancellationToken
-							reject(new Error("Cancelled by user"));
+							reject(new CancelledError("Cancelled by user"));
 						} catch (e) {
 							reject(e);
 						}
@@ -261,8 +266,8 @@ export namespace HttpClient {
 		private readonly _headers: http.IncomingHttpHeaders;
 		private readonly _body: Buffer;
 
-		public constructor(statusCode: number, statusDescription: string, headers: http.IncomingHttpHeaders, body: Buffer) {
-			super(`${statusCode} ${statusDescription}`);
+		public constructor(statusCode: number, statusDescription: string, headers: http.IncomingHttpHeaders, body: Buffer, innerError?: Error) {
+			super(`${statusCode} ${statusDescription}`, innerError);
 			this._statusCode = statusCode;
 			this._statusDescription = statusDescription;
 			this._headers = headers;
