@@ -217,7 +217,7 @@ describe("HttpClient tests", function () {
 				await listeningDefer.promise;
 				try {
 					const httpClient = new HttpClient({ timeout: 500 });
-					let expectedError;
+					let expectedError!: HttpClient.WebError;
 					try {
 						await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, { url: new URL("http://127.0.0.1:65535"), method: "GET" });
 					} catch (e) {

@@ -15,7 +15,7 @@ if (PACKAGE_GUARD in G) {
 }
 
 import { CancellationToken, Logger, InvokeChannel } from "@zxteam/contract";
-import { InnerError, CancelledError } from "@zxteam/errors";
+import { InnerError, CancelledError, InvalidOperationError } from "@zxteam/errors";
 
 import * as http from "http";
 import * as https from "https";
@@ -84,7 +84,14 @@ export class HttpClient implements HttpClient.HttpInvokeChannel {
 								headers: respHeaders, body: respBody
 							});
 						} else {
-							return reject(new HttpClient.WebError(respStatus, respDescription, respHeaders, respBody));
+							return reject(
+								new HttpClient.WebError(
+									respStatus, respDescription,
+									method,
+									headers !== undefined ? headers : {}, body !== undefined ? body : Buffer.alloc(0),
+									respHeaders, respBody
+								)
+							);
 						}
 					}
 				});
@@ -97,7 +104,7 @@ export class HttpClient implements HttpClient.HttpInvokeChannel {
 			}
 
 			const request = this.createClientRequest({ url, method, headers }, responseHandler);
-			if (body) {
+			if (body !== undefined) {
 				if (this.log.isTraceEnabled) { this.log.trace("Write body: ", body.toString()); }
 				request.write(body);
 			}
@@ -263,21 +270,48 @@ export namespace HttpClient {
 	export class WebError extends HttpClientError implements Response {
 		private readonly _statusCode: number;
 		private readonly _statusDescription: string;
-		private readonly _headers: http.IncomingHttpHeaders;
-		private readonly _body: Buffer;
+		private readonly _method: string;
+		private readonly _requestHeaders: http.OutgoingHttpHeaders;
+		private readonly _requestBody: Buffer;
+		private readonly _responseHeaders: http.IncomingHttpHeaders;
+		private readonly _responseBody: Buffer;
 
-		public constructor(statusCode: number, statusDescription: string, headers: http.IncomingHttpHeaders, body: Buffer, innerError?: Error) {
+		public constructor(
+			statusCode: number, statusDescription: string,
+			method: string,
+			requestHeaders: http.OutgoingHttpHeaders, requestBody: Buffer,
+			responseHeaders: http.IncomingHttpHeaders, responseBody: Buffer,
+			innerError?: Error
+		) {
 			super(`${statusCode} ${statusDescription}`, innerError);
 			this._statusCode = statusCode;
 			this._statusDescription = statusDescription;
-			this._headers = headers;
-			this._body = body;
+			this._method = method;
+			this._requestHeaders = requestHeaders;
+			this._requestBody = requestBody;
+			this._responseHeaders = responseHeaders;
+			this._responseBody = responseBody;
 		}
 
 		public get statusCode(): number { return this._statusCode; }
 		public get statusDescription(): string { return this._statusDescription; }
-		public get headers(): http.IncomingHttpHeaders { return this._headers; }
-		public get body(): Buffer { return this._body; }
+		public get method(): string { return this._method; }
+		public get requestHeaders(): http.OutgoingHttpHeaders { return this._requestHeaders; }
+		public get requestBody(): Buffer { return this._requestBody; }
+		public get requestObject(): any {
+			if (this.headers["content-type"] !== "application/json") {
+				throw new InvalidOperationError("Wrong operation. The property available only for 'application/json' content type requests.");
+			}
+			return JSON.parse(this.requestBody.toString());
+		}
+		public get headers(): http.IncomingHttpHeaders { return this._responseHeaders; }
+		public get body(): Buffer { return this._responseBody; }
+		public get object(): any {
+			if (this.headers["content-type"] !== "application/json") {
+				throw new InvalidOperationError("Wrong operation. The property available only for 'application/json' content type responses.");
+			}
+			return JSON.parse(this.body.toString());
+		}
 	}
 
 	/**

@@ -1,6 +1,6 @@
 {
 	"name": "@zxteam/http-client",
-	"version": "6.0.63",
+	"version": "6.0.64",
 	"description": "HTTP(S) Client",
 	"author": {
 		"name": "ZXTeam",
@@ -24,7 +24,7 @@
 		"@zxteam/errors": "^6.0.62"
 	},
 	"devDependencies": {
-		"@types/node": "^11.15.18",
+		"@types/node": "^11.15.21",
 		"@zxnode/build": "^0.0.38",
 		"@zxteam/cancellation": "^6.0.62"
 	},
