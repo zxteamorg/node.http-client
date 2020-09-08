@@ -50,7 +50,8 @@ export class HttpClient implements HttpClient.HttpInvokeChannel {
 			const errorHandler = (error: Error) => {
 				if (!resolved) {
 					resolved = true;
-					const msg = isConnectTimeout ? "Connect Timeout" : "http.request failed. See innerError for details";
+					const msg = isConnectTimeout ? "Connect Timeout"
+						: `${method} ${url} failed with error: ${error.message}. See innerError for details`;
 					this.log.debug(msg, error);
 					return reject(new HttpClient.CommunicationError(msg, error));
 				}
@@ -299,7 +300,9 @@ export namespace HttpClient {
 		public get requestHeaders(): http.OutgoingHttpHeaders { return this._requestHeaders; }
 		public get requestBody(): Buffer { return this._requestBody; }
 		public get requestObject(): any {
-			if (this.headers["content-type"] !== "application/json") {
+			const requestHeaders: http.OutgoingHttpHeaders = this.requestHeaders;
+			const contentTypeHeaderName: string | undefined = Object.keys(requestHeaders).find(header => header.toLowerCase() === "content-type");
+			if (contentTypeHeaderName !== undefined && requestHeaders[contentTypeHeaderName] !== "application/json") {
 				throw new InvalidOperationError("Wrong operation. The property available only for 'application/json' content type requests.");
 			}
 			return JSON.parse(this.requestBody.toString());
@@ -307,7 +310,9 @@ export namespace HttpClient {
 		public get headers(): http.IncomingHttpHeaders { return this._responseHeaders; }
 		public get body(): Buffer { return this._responseBody; }
 		public get object(): any {
-			if (this.headers["content-type"] !== "application/json") {
+			const headers: http.IncomingHttpHeaders = this.headers;
+			const contentTypeHeaderName: string | undefined = Object.keys(headers).find(header => header.toLowerCase() === "content-type");
+			if (contentTypeHeaderName !== undefined && headers[contentTypeHeaderName] !== "application/json") {
 				throw new InvalidOperationError("Wrong operation. The property available only for 'application/json' content type responses.");
 			}
 			return JSON.parse(this.body.toString());

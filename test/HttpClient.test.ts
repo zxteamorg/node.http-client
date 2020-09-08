@@ -1,5 +1,5 @@
 import { Financial as FinancialLike } from "@zxteam/contract";
-import { CancelledError } from "@zxteam/errors";
+import { CancelledError, InvalidOperationError } from "@zxteam/errors";
 import { DUMMY_CANCELLATION_TOKEN, ManualCancellationTokenSource } from "@zxteam/cancellation";
 
 import { assert } from "chai";
@@ -19,7 +19,7 @@ describe("HttpClient tests", function () {
 		it("HttpClient should GET http:", async function () {
 			const httpClient = new HttpClient({ timeout: 5000 });
 			await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
-//				url: new URL("?a", "http://www.google.com"),
+				//				url: new URL("?a", "http://www.google.com"),
 				url: new URL("?a", "http://echo.org"),
 				method: "GET",
 				headers: { test: "test" }
@@ -227,6 +227,86 @@ describe("HttpClient tests", function () {
 					assert.instanceOf(expectedError, HttpClient.WebError);
 					assert.instanceOf(expectedError.body, Buffer);
 					assert.equal(expectedError.body.toString(), "Fake data");
+				} finally {
+					const closeDefer: any = {};
+					closeDefer.promise = new Promise(r => { closeDefer.resolve = r; });
+					fakeServer.close(() => closeDefer.resolve());
+					await closeDefer.promise;
+				}
+			});
+			it("Should provide requestObject on WebError for application/json content", async function () {
+				const listeningDefer: any = {};
+				listeningDefer.promise = new Promise(r => { listeningDefer.resolve = r; });
+				const fakeServer = new http.Server((req, res) => {
+					res.writeHead(404, "Fake not found");
+					res.end("Fake data");
+				});
+				fakeServer.listen(65535, "127.0.0.1", () => {
+					listeningDefer.resolve();
+				});
+				await listeningDefer.promise;
+				try {
+					const httpClient = new HttpClient({ timeout: 500 });
+					let expectedError!: HttpClient.WebError;
+					try {
+						await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
+							url: new URL("http://127.0.0.1:65535"),
+							headers: {
+								"Content-Type": "application/json"
+							},
+							method: "POST",
+							body: Buffer.from(JSON.stringify({ test: 42 }))
+						});
+					} catch (e) {
+						expectedError = e;
+					}
+					assert.isDefined(expectedError);
+					assert.instanceOf(expectedError, HttpClient.WebError);
+					assert.instanceOf(expectedError.body, Buffer);
+					assert.instanceOf(expectedError.requestBody, Buffer);
+					assert.deepEqual(expectedError.requestObject, { test: 42 });
+				} finally {
+					const closeDefer: any = {};
+					closeDefer.promise = new Promise(r => { closeDefer.resolve = r; });
+					fakeServer.close(() => closeDefer.resolve());
+					await closeDefer.promise;
+				}
+			});
+			it("Should NOT provide requestObject on WebError for non application/json content", async function () {
+				const listeningDefer: any = {};
+				listeningDefer.promise = new Promise(r => { listeningDefer.resolve = r; });
+				const fakeServer = new http.Server((req, res) => {
+					res.writeHead(404, "Fake not found");
+					res.end("Fake data");
+				});
+				fakeServer.listen(65535, "127.0.0.1", () => {
+					listeningDefer.resolve();
+				});
+				await listeningDefer.promise;
+				try {
+					const httpClient = new HttpClient({ timeout: 500 });
+					let expectedError!: HttpClient.WebError;
+					try {
+						await httpClient.invoke(DUMMY_CANCELLATION_TOKEN, {
+							url: new URL("http://127.0.0.1:65535"),
+							headers: {
+								"Content-Type": "text/plain"
+							},
+							method: "POST",
+							body: Buffer.from("test")
+						});
+					} catch (e) {
+						expectedError = e;
+					}
+					assert.isDefined(expectedError);
+					assert.instanceOf(expectedError, HttpClient.WebError);
+					assert.instanceOf(expectedError.body, Buffer);
+					assert.instanceOf(expectedError.requestBody, Buffer);
+
+					let expectedError2!: InvalidOperationError;
+					try { const dummy = expectedError.requestObject; } catch (e) { expectedError2 = e; }
+					assert.isDefined(expectedError2);
+					assert.instanceOf(expectedError2, InvalidOperationError);
 				} finally {
 					const closeDefer: any = {};
 					closeDefer.promise = new Promise(r => { closeDefer.resolve = r; });
