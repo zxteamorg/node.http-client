@@ -53,7 +53,11 @@ export class HttpClient implements HttpClient.HttpInvokeChannel {
 					const msg = isConnectTimeout ? "Connect Timeout"
 						: `${method} ${url} failed with error: ${error.message}. See innerError for details`;
 					this.log.debug(msg, error);
-					return reject(new HttpClient.CommunicationError(msg, error));
+					return reject(new HttpClient.CommunicationError(url, method,
+						headers !== undefined ? headers : {},
+						body !== undefined ? body : Buffer.alloc(0),
+						msg, error
+					));
 				}
 			};
 
@@ -66,7 +70,11 @@ export class HttpClient implements HttpClient.HttpInvokeChannel {
 						resolved = true;
 
 						if (isConnectTimeout) {
-							return reject(new HttpClient.CommunicationError("Connect Timeout"));
+							return reject(new HttpClient.CommunicationError(url, method,
+								headers !== undefined ? headers : {},
+								body !== undefined ? body : Buffer.alloc(0),
+								"Connect Timeout"
+							));
 						}
 
 						const respStatus: number = response.statusCode || 500;
@@ -88,7 +96,7 @@ export class HttpClient implements HttpClient.HttpInvokeChannel {
 							return reject(
 								new HttpClient.WebError(
 									respStatus, respDescription,
-									method,
+									url, method,
 									headers !== undefined ? headers : {}, body !== undefined ? body : Buffer.alloc(0),
 									respHeaders, respBody
 								)
@@ -263,6 +271,49 @@ export namespace HttpClient {
 
 	/** Base error type for WebClient */
 	export abstract class HttpClientError extends InnerError {
+		private readonly _url: URL;
+		private readonly _method: string;
+		private readonly _requestHeaders: http.OutgoingHttpHeaders;
+		private readonly _requestBody: Buffer;
+
+		public constructor(
+			url: URL, method: string,
+			requestHeaders: http.OutgoingHttpHeaders, requestBody: Buffer,
+			errorMessage: string,
+			innerError?: Error
+		) {
+			super(errorMessage, innerError);
+			this._url = url;
+			this._method = method;
+			this._requestHeaders = requestHeaders;
+			this._requestBody = requestBody;
+		}
+
+		public get url(): URL { return this._url; }
+		public get method(): string { return this._method; }
+		public get requestHeaders(): http.OutgoingHttpHeaders { return this._requestHeaders; }
+		public get requestBody(): Buffer { return this._requestBody; }
+		public get requestObject(): any {
+			const requestHeaders: http.OutgoingHttpHeaders = this.requestHeaders;
+			let contentType: string | null = null;
+			if (requestHeaders !== null) {
+				const contentTypeHeaderName = Object.keys(requestHeaders).find(header => header.toLowerCase() === "content-type");
+				if (contentTypeHeaderName !== undefined) {
+					const headerValue = requestHeaders[contentTypeHeaderName];
+					if (typeof headerValue === "string") {
+						contentType = headerValue;
+					}
+				}
+			}
+
+			if (contentType !== "application/json") {
+				throw new InvalidOperationError("Wrong operation. The property available only for 'application/json' content type requests.");
+			}
+
+			const requestBody: Buffer = this.requestBody;
+
+			return JSON.parse(requestBody.toString("utf-8"));
+		}
 	}
 
 	/**
@@ -271,42 +322,25 @@ export namespace HttpClient {
 	export class WebError extends HttpClientError implements Response {
 		private readonly _statusCode: number;
 		private readonly _statusDescription: string;
-		private readonly _method: string;
-		private readonly _requestHeaders: http.OutgoingHttpHeaders;
-		private readonly _requestBody: Buffer;
 		private readonly _responseHeaders: http.IncomingHttpHeaders;
 		private readonly _responseBody: Buffer;
 
 		public constructor(
 			statusCode: number, statusDescription: string,
-			method: string,
+			url: URL, method: string,
 			requestHeaders: http.OutgoingHttpHeaders, requestBody: Buffer,
 			responseHeaders: http.IncomingHttpHeaders, responseBody: Buffer,
 			innerError?: Error
 		) {
-			super(`${statusCode} ${statusDescription}`, innerError);
+			super(url, method, requestHeaders, requestBody, `${statusCode} ${statusDescription}`, innerError);
 			this._statusCode = statusCode;
 			this._statusDescription = statusDescription;
-			this._method = method;
-			this._requestHeaders = requestHeaders;
-			this._requestBody = requestBody;
 			this._responseHeaders = responseHeaders;
 			this._responseBody = responseBody;
 		}
 
 		public get statusCode(): number { return this._statusCode; }
 		public get statusDescription(): string { return this._statusDescription; }
-		public get method(): string { return this._method; }
-		public get requestHeaders(): http.OutgoingHttpHeaders { return this._requestHeaders; }
-		public get requestBody(): Buffer { return this._requestBody; }
-		public get requestObject(): any {
-			const requestHeaders: http.OutgoingHttpHeaders = this.requestHeaders;
-			const contentTypeHeaderName: string | undefined = Object.keys(requestHeaders).find(header => header.toLowerCase() === "content-type");
-			if (contentTypeHeaderName !== undefined && requestHeaders[contentTypeHeaderName] !== "application/json") {
-				throw new InvalidOperationError("Wrong operation. The property available only for 'application/json' content type requests.");
-			}
-			return JSON.parse(this.requestBody.toString());
-		}
 		public get headers(): http.IncomingHttpHeaders { return this._responseHeaders; }
 		public get body(): Buffer { return this._responseBody; }
 		public get object(): any {
@@ -324,8 +358,12 @@ export namespace HttpClient {
 	 * Such a DNS lookup issues, TCP connection issues, etc...
 	 */
 	export class CommunicationError extends HttpClientError {
-		public constructor(message: string, innerError?: Error) {
-			super(message, innerError);
+		public constructor(
+			url: URL, method: string,
+			requestHeaders: http.OutgoingHttpHeaders, requestBody: Buffer,
+			erroMessage: string, innerError?: Error
+		) {
+			super(url, method, requestHeaders, requestBody, erroMessage, innerError);
 		}
 	}
 }
